@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Yaoguai Job Slayer AI",
+  "version": "1.0",
+  "description": "A Chrome extension built with React and Vite.",
+  "action": {
+    "default_popup": "index.html",
+    "default_icon": {
+      "16": "vite.svg",
+      "48": "vite.svg",
+      "128": "vite.svg"
+    }
+  },
+  "permissions": ["activeTab", "storage"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "vite.svg",
+    "48": "vite.svg",
+    "128": "vite.svg"
+  }
+}
