@@ -80,8 +80,51 @@ const Resume = () => {
     }));
   };
 
+  const handleAutoFill = async () => {
+    try {
+      console.log('Attempting to send message to content script...');
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+      if (!tab) {
+        console.error('No active tab found');
+        return;
+      }
+
+      if (!tab.url || tab.url.startsWith('chrome://')) {
+        console.error('Cannot inject content script into chrome:// pages');
+        alert('Please navigate to a webpage before using this feature');
+        return;
+      }
+
+      // First, inject the content script
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content.js']
+        });
+        console.log('Content script injected successfully');
+      } catch (injectionError) {
+        console.error('Error injecting content script:', injectionError);
+        return;
+      }
+
+      // Then send the message
+      await chrome.tabs.sendMessage(tab.id, { action: 'openFloatingPage' });
+      console.log('Message sent successfully');
+      window.close();
+    } catch (error) {
+      console.error('Error sending message:', error);
+      if (error.message.includes('chrome://')) {
+        alert('This feature cannot be used on Chrome system pages. Please navigate to a webpage.');
+      }
+    }
+  };
+
   return (
     <article>
+      <div className='grid'>
+        <button onClick={handleAutoFill}>Auto Fill</button>
+      </div>
       <div className='grid'><button onClick={() => setIsEditing(!isEditing)}>
         {isEditing ? 'Save' : 'Edit'}
       </button></div>

@@ -1,0 +1,20 @@
+.floating-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 10000;
+  width: 300px;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+}
+
+.floating-container h2 {
+  margin-top: 0;
+}
+
+.floating-container button {
+  margin-top: 10px;
+}
