@@ -215,25 +215,6 @@ nav {
   height: 40px;
 }
 
-/* Add to your main CSS file */
-.yg-style-wrapper {
-  position: fixed;
-  z-index: 2147483647;
-  font-family: system-ui, -apple-system, sans-serif;
-  
-  /* Reset styles */
-  * {
-    all: unset;
-    box-sizing: border-box;
-  }
-  
-  button {
-    padding: 0.5rem 1rem !important;
-    border: 1px solid #ddd !important;
-    background: #fff !important;
-  }
-}
-
 /* ====================================================================== */
 /* Floating Auto Fill Page Style Ends */
 /* ====================================================================== */

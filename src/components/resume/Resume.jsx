@@ -88,7 +88,7 @@ const Resume = () => {
       try {
         console.log('Attempting to send message to content script...');
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
+      
         if (!tab) {
           console.error('No active tab found');
           return;
@@ -147,9 +147,7 @@ const Resume = () => {
       <div className='grid'><button>Download PDF Resume</button></div>
       <div className='grid'><button>Download PDF Cover Letter</button></div>
       {showFloating && (
-        <div className="yg-style-wrapper"> {/* Add this wrapper */}
-          <FloatingPage onClose={() => setShowFloating(false)} />
-        </div>
+        <FloatingPage onClose={() => setShowFloating(false)} />
       )}
     </article>
   );
