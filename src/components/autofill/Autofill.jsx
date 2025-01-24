@@ -1,6 +1,6 @@
 import React from 'react';
 import * as ReactDOM from 'react-dom/client';
-import './autofill.css';
+import '../../app.css';
 
 export const FloatingPage = ({ onClose }) => {
   return (
