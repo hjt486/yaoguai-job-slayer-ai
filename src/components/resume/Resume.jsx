@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { DEFAULT_PROFILE_STRUCTURE, LABELS } from '../Constants';
+import { FloatingPage } from '../autofill/Autofill';
 
 const ResumeSection = ({ title, data, isEditing }) => {
   const renderContent = () => {
@@ -72,6 +73,7 @@ const ResumeSection = ({ title, data, isEditing }) => {
 const Resume = () => {
   const [profile, setProfile] = useState(DEFAULT_PROFILE_STRUCTURE);
   const [isEditing, setIsEditing] = useState(false);
+  const [showFloating, setShowFloating] = useState(false);
 
   const handleSectionEdit = (section, data) => {
     setProfile(prev => ({
@@ -81,49 +83,54 @@ const Resume = () => {
   };
 
   const handleAutoFill = async () => {
-    try {
-      console.log('Attempting to send message to content script...');
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      
-      if (!tab) {
-        console.error('No active tab found');
-        return;
-      }
-
-      if (!tab.url || tab.url.startsWith('chrome://')) {
-        console.error('Cannot inject content script into chrome:// pages');
-        alert('Please navigate to a webpage before using this feature');
-        return;
-      }
-
-      // First, inject the content script
+    if (typeof chrome !== 'undefined' && chrome.runtime) {
+      // Original Chrome extension code
       try {
-        await chrome.scripting.executeScript({
-          target: { tabId: tab.id },
-          files: ['content.js']
-        });
-        console.log('Content script injected successfully');
-      } catch (injectionError) {
-        console.error('Error injecting content script:', injectionError);
-        return;
-      }
+        console.log('Attempting to send message to content script...');
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      
+        if (!tab) {
+          console.error('No active tab found');
+          return;
+        }
 
-      // Then send the message
-      await chrome.tabs.sendMessage(tab.id, { action: 'openFloatingPage' });
-      console.log('Message sent successfully');
-      window.close();
-    } catch (error) {
-      console.error('Error sending message:', error);
-      if (error.message.includes('chrome://')) {
-        alert('This feature cannot be used on Chrome system pages. Please navigate to a webpage.');
+        if (!tab.url || tab.url.startsWith('chrome://')) {
+          console.error('Cannot inject content script into chrome:// pages');
+          alert('Please navigate to a webpage before using this feature');
+          return;
+        }
+
+        // First, inject the content script
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
+          console.log('Content script injected successfully');
+        } catch (injectionError) {
+          console.error('Error injecting content script:', injectionError);
+          return;
+        }
+
+        // Then send the message
+        await chrome.tabs.sendMessage(tab.id, { action: 'openFloatingPage' });
+        console.log('Message sent successfully');
+        window.close();
+      } catch (error) {
+        console.error('Error sending message:', error);
       }
+    } else {
+      // Dev mode: toggle floating page
+      setShowFloating(!showFloating);
     }
   };
 
   return (
     <article>
       <div className='grid'>
-        <button onClick={handleAutoFill}>Auto Fill</button>
+        <button onClick={handleAutoFill}>
+          {typeof chrome === 'undefined' ? 'Toggle Auto Fill' : 'Auto Fill'}
+        </button>
       </div>
       <div className='grid'><button onClick={() => setIsEditing(!isEditing)}>
         {isEditing ? 'Save' : 'Edit'}
@@ -139,6 +146,9 @@ const Resume = () => {
       ))}
       <div className='grid'><button>Download PDF Resume</button></div>
       <div className='grid'><button>Download PDF Cover Letter</button></div>
+      {showFloating && (
+        <FloatingPage onClose={() => setShowFloating(false)} />
+      )}
     </article>
   );
 };
