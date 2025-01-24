@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactDOM from 'react-dom/client';
+import * as ReactDOM from 'react-dom/client';
 import './content.css'; // Import the CSS file
 
 (function() {
@@ -22,7 +22,7 @@ import './content.css'; // Import the CSS file
       container.id = 'yaoguai-root';
       document.body.appendChild(container);
 
-      const root = createRoot(container);
+      const root = ReactDOM.createRoot(container);
       root.render(
         <FloatingPage 
           onClose={() => {
