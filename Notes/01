@@ -1,0 +1,23 @@
+So the problem here is that my current implementatuon in `AutoFill.jsx` is a floating page in my Chrome extention program.
+
+The extention program itself has a popup page, and in `Resume.jsx` there's a Auto Fill button to click to open the floating page on top of website in Chrome.
+
+In `Resume.jsx` I also created two envinronment:
+1. DEV to display floating page on top of original pop up for dev purpose.
+2. Extention to inject it on to website page.
+
+The problem now is that
+1. I'm using Pico.css for my main app/popup, which has style defined in App.css, it works fine for pop up and for DEV mode, the floating page is displaying correctly with proper style, since it's inheriting from main app.
+2. However, it's not functions well in extention mode as after injecting the page on website, it's inhriting the style from the website.
+
+I'm tryin to fix the issue.
+
+I know Shadow DOM is used to isolated the style,
+
+So correct my plan if needed.
+
+I'm trying to firstly:
+1. Make the floating page in DEV mode isolated from main app, to confirm the Shadow DOM works as expected to remove the style, so it proves the the isolation works.
+2. Then add the style inside the isolated enviroment, perferred to import from App.css, over using inline style.
+
+Please suggest

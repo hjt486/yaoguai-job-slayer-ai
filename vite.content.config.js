@@ -26,5 +26,15 @@ export default defineConfig({
   define: {
     'process.env.NODE_ENV': JSON.stringify('production'),
     global: 'window'
+  },
+  css: {
+    modules: {
+      localsConvention: 'camelCase',
+    },
+    preprocessorOptions: {
+      scss: {
+        additionalData: `@import "./src/App.css";`, 
+      }
+    }
   }
 });

@@ -2,6 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { SITE_LOGO } from '../Constants';
 import * as ReactDOM from 'react-dom/client';
 
+// Import CSS as raw strings using Vite's ?raw suffix
+import picoCss from '@picocss/pico/css/pico.min.css?raw';
+import appCss from '../../App.css?raw';
+
 export const FloatingPage = ({ onClose }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [position, setPosition] = useState({ x: window.innerWidth - 60, y: 20 });
@@ -45,12 +49,10 @@ export const FloatingPage = ({ onClose }) => {
   }, [isDragging]);
 
   return (
-    <div 
-      id="yaoguai-floating-container" 
+    <div
+      id="yaoguai-floating-container"
       className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
       style={{
-        top: isExpanded ? '20px' : `${position.y}px`,
-        left: isExpanded ? 'auto' : `${position.x}px`,
         cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab')
       }}
       onMouseDown={handleMouseDown}
@@ -77,7 +79,7 @@ export const FloatingPage = ({ onClose }) => {
           </main>
         </article>
       ) : (
-        <button 
+        <button
           className="contrast floating-button"
           onClick={() => setIsExpanded(true)}
           style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
@@ -89,30 +91,74 @@ export const FloatingPage = ({ onClose }) => {
   );
 };
 
-// Content script initialization remains the same for extension mode
+// Create a unified mounting function for both DEV and Extension modes
+const mountFloatingPage = (onClose, sendResponse = null) => {
+  const hostContainer = document.createElement('div');
+  hostContainer.id = 'yaoguai-host';
+  document.body.appendChild(hostContainer);
+
+  const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
+
+  // 1. Create proper style elements
+  const injectStyles = (cssContent) => {
+    const style = document.createElement('style');
+    style.textContent = cssContent;
+    shadowRoot.appendChild(style);
+  };
+
+  // 2. Inject styles in correct order
+  injectStyles(`
+    :host {
+      all: initial !important;
+      contain: content !important;
+      display: block !important;
+      position: fixed !important;
+      top: 20px !important;
+      right: 20px !important;
+      z-index: 2147483647 !important;
+      isolation: isolate !important;
+      font-family: system-ui, sans-serif !important;
+      width: fit-content !important;
+      height: fit-content !important;
+      transform: none !important; /* Add this line */
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+  `);
+
+  injectStyles(picoCss);  // Imported Pico CSS
+  injectStyles(appCss);   // Imported App CSS
+
+  // 3. Create React container
+  const container = document.createElement('div');
+  shadowRoot.appendChild(container);
+
+  // 4. Render React component
+  const root = ReactDOM.createRoot(container);
+  root.render(
+    <FloatingPage
+      onClose={() => {
+        root.unmount();
+        hostContainer.remove();
+        if (sendResponse) sendResponse({ success: true });
+        if (onClose) onClose();
+      }}
+    />
+  );
+
+  return hostContainer;
+};
+
+// Export for DEV mode
+export const showFloatingPage = (onClose) => {
+  return mountFloatingPage(onClose);
+};
+
+// Use for Extension mode
 const initializeContentScript = () => {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Message received in content script:', message);
     if (message.action === 'openFloatingPage') {
-      console.log('Opening floating page...');
-      const container = document.createElement('div');
-      container.id = 'yaoguai-root';
-      container.style.position = 'fixed';
-      container.style.top = '0';
-      container.style.right = '0';
-      container.style.zIndex = '2147483647';
-      document.body.appendChild(container);
-
-      const root = ReactDOM.createRoot(container);
-      root.render(
-        <FloatingPage 
-          onClose={() => {
-            root.unmount();
-            container.remove();
-            sendResponse({ success: true });
-          }} 
-        />
-      );
+      mountFloatingPage(null, sendResponse);
     }
     return true;
   });
