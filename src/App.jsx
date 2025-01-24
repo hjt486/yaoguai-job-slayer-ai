@@ -1,35 +1,34 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState } from 'react';
+import './App.css';
+import LoginForm from './components/auth/LoginForm';
+import Profiles from './components/profiles/Profiles';
+import Resume from './components/resume/Resume';
+import Settings from './components/settings/Settings';
+import Match from './components/match/Match';
+import TabLayout from './components/layout/TabLayout';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [activeTab, setActiveTab] = useState('profiles');
+
+  const handleLogin = () => {
+    setIsLoggedIn(true);
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div className='tight-layout'>
+      {!isLoggedIn ? (
+        <LoginForm onLogin={handleLogin} />
+      ) : (
+        <TabLayout activeTab={activeTab} onTabChange={setActiveTab}>
+          {activeTab === 'profiles' && <Profiles />}
+          {activeTab === 'resume' && <Resume />}
+          {activeTab === 'match' && <Match />}
+          {activeTab === 'settings' && <Settings />}
+        </TabLayout>
+      )}
+    </div>
+  );
 }
 
-export default App
+export default App;

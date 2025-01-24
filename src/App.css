@@ -1,42 +1,175 @@
+@import "@picocss/pico";
+
+/* Light color scheme (Default) */
+[data-theme=light],
+:root:not([data-theme=dark]) {
+  --pico-text-selection-color: rgba(64, 224, 208, 0.25); /* Turquoise selection */
+  --pico-primary: #4a148c; /* Deep purple (mystical and powerful) */
+  --pico-primary-background: #7c4dff; /* Bright purple (energetic and modern) */
+  --pico-primary-underline: rgba(74, 20, 140, 0.5); /* Deep purple underline */
+  --pico-primary-hover: #38006b; /* Darker purple (hover effect) */
+  --pico-primary-hover-background: #651fff; /* Brighter purple (hover background) */
+  --pico-primary-focus: rgba(100, 31, 255, 0.5); /* Focus effect */
+  --pico-primary-inverse: #ffffff; /* White for contrast */
+  --pico-switch-color: var(--pico-secondary-hover); /* Secondary hover color */
+  --pico-spacing: 0em;
+}
+
+/* Dark color scheme (Auto) */
+@media only screen and (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --pico-text-selection-color: rgba(64, 224, 208, 0.1875); /* Turquoise selection */
+    --pico-primary: #7c4dff; /* Bright purple (energetic and modern) */
+    --pico-primary-background: #4a148c; /* Deep purple (mystical and powerful) */
+    --pico-primary-underline: rgba(124, 77, 255, 0.5); /* Bright purple underline */
+    --pico-primary-hover: #651fff; /* Brighter purple (hover effect) */
+    --pico-primary-hover-background: #38006b; /* Darker purple (hover background) */
+    --pico-primary-focus: rgba(100, 31, 255, 0.375); /* Focus effect */
+    --pico-primary-inverse: #ffffff; /* White for contrast */
+    --pico-switch-color: var(--pico-background-color); /* Background color for switch */
+    --pico-spacing: 0em;
+  }
+}
+
+/* Dark color scheme (Forced) */
+[data-theme=dark] {
+  --pico-text-selection-color: rgba(64, 224, 208, 0.1875); /* Turquoise selection */
+  --pico-primary: #7c4dff; /* Bright purple (energetic and modern) */
+  --pico-primary-background: #4a148c; /* Deep purple (mystical and powerful) */
+  --pico-primary-underline: rgba(124, 77, 255, 0.5); /* Bright purple underline */
+  --pico-primary-hover: #651fff; /* Brighter purple (hover effect) */
+  --pico-primary-hover-background: #38006b; /* Darker purple (hover background) */
+  --pico-primary-focus: rgba(100, 31, 255, 0.375); /* Focus effect */
+  --pico-primary-inverse: #ffffff; /* White for contrast */
+  --pico-switch-color: var(--pico-background-color); /* Background color for switch */
+  --pico-spacing: 0em;
+}
+
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+  width: 400px;
+  height: 600px;
+  margin: 0;
+  padding: 1rem;
+  text-align: left;
+  background: var(--background-color);
+}
+
+.app {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.tabs {
+  margin-bottom: 1rem;
+}
+
+.tab.active {
+  background: var(--primary);
+  color: var(--primary-inverse);
+}
+
+li[role="tab"]:not([aria-selected="true"]) {
+  cursor: pointer;
+}
+
+.tight-layout {
+  font-size: 12px; /* Smaller font size */
+  margin: 0;
+  padding: 0;
+}
+
+.tight-layout * {
+  margin: 0.1em; /* Smaller margin */
+  padding: 0.25em; /* Smaller padding */
+}
+
+.tight-layout button, .tight-layout input, .tight-layout [role="button"] {
+  font-size: 12px; /* Smaller font size for buttons and inputs */
+  height: 3em;
+  align-content: center;
+}
+
+.tighter-layout{
+  margin: 0em; /* Smaller margin */
+  padding: 0em; /* Smaller padding */
+}
+
+textarea, input[type="text"] {
+  font-size: 1em; /* Set text size (1rem = 16px by default) */
+}
+
+p {
+  margin: 0em; /* Remove default margin */
+  padding: 0em; /* Remove default padding */
+}
+
+h1 {
+  font-size: 1.5em; /* Custom font size for h1 */
+}
+
+h2 {
+  font-size: 1.25em; /* Custom font size for h2 */
+}
+
+h3 {
+  font-size: 1em; /* Custom font size for h3 */
+  padding: 0;
+  margin: 0;
+}
+
+h4 {
+  font-size: 1.5rem; /* Custom font size for h4 */
+}
+
+h5 {
+  font-size: 1.25rem; /* Custom font size for h5 */
+}
+
+h6 {
+  font-size: 1rem; /* Custom font size for h6 */
+}
+
+nav {
+  align-items: baseline;
+}
+
+.align-center {
+  align-items: center;
+  align-self: center;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+.grid-horizontal {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
 }
 
-@keyframes logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.grid-vertical {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.button-full {
+  flex: 1; /* Make the button stretch to fill the container */
+  padding: 1em; /* Add padding for better appearance */
 }
 
-.card {
-  padding: 2em;
+.button-square {
+  width: 50px; /* Set width */
+  height: 50px; /* Set height (same as width) */
+  align-items: center; /* Center vertically */
+  justify-content: center; /* Center horizontally */
 }
 
-.read-the-docs {
-  color: #888;
+.profile-grid {
+  margin-bottom: 0.25em;
 }
