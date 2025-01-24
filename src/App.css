@@ -92,6 +92,7 @@ li[role="tab"]:not([aria-selected="true"]) {
 
 .tight-layout button, .tight-layout input, .tight-layout [role="button"] {
   font-size: 12px; /* Smaller font size for buttons and inputs */
+  min-width: 50px;
   height: 3em;
   align-content: center;
 }

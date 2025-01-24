@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { authService } from './services/authService';
 import './App.css';
 import LoginForm from './components/auth/LoginForm';
 import Profiles from './components/profiles/Profiles';
@@ -7,13 +8,21 @@ import Settings from './components/settings/Settings';
 import Match from './components/match/Match';
 import TabLayout from './components/layout/TabLayout';
 
-function App() {
+const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [activeTab, setActiveTab] = useState('profiles');
 
-  const handleLogin = () => {
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  const handleLogin = (userData) => {
     setIsLoggedIn(true);
   };
+
+  const [activeTab, setActiveTab] = useState('profiles');
 
   return (
     <div className='tight-layout'>
@@ -29,6 +38,6 @@ function App() {
       )}
     </div>
   );
-}
+};
 
 export default App;
