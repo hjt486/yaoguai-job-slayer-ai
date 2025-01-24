@@ -45,10 +45,12 @@ export const FloatingPage = ({ onClose }) => {
   }, [isDragging]);
 
   return (
-    <div 
-      id="yaoguai-floating-container" 
+    <div
+      id="yaoguai-floating-container"
       className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
       style={{
+        position: 'fixed', // Add this line
+        zIndex: 2147483647, // Add this line
         top: isExpanded ? '20px' : `${position.y}px`,
         left: isExpanded ? 'auto' : `${position.x}px`,
         cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab')
@@ -77,7 +79,7 @@ export const FloatingPage = ({ onClose }) => {
           </main>
         </article>
       ) : (
-        <button 
+        <button
           className="contrast floating-button"
           onClick={() => setIsExpanded(true)}
           style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
@@ -92,27 +94,55 @@ export const FloatingPage = ({ onClose }) => {
 // Content script initialization remains the same for extension mode
 const initializeContentScript = () => {
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('Message received in content script:', message);
     if (message.action === 'openFloatingPage') {
-      console.log('Opening floating page...');
-      const container = document.createElement('div');
-      container.id = 'yaoguai-root';
-      container.style.position = 'fixed';
-      container.style.top = '0';
-      container.style.right = '0';
-      container.style.zIndex = '2147483647';
-      document.body.appendChild(container);
+      try {
+        // Create isolated container
+        const hostContainer = document.createElement('div');
+        hostContainer.id = 'yaoguai-host';
+        document.body.appendChild(hostContainer);
+        
+        // Create shadow DOM with closed mode for better isolation
+        const shadowRoot = hostContainer.attachShadow({ mode: 'open' }); // Changed to open mode for debugging
 
-      const root = ReactDOM.createRoot(container);
-      root.render(
-        <FloatingPage 
-          onClose={() => {
-            root.unmount();
-            container.remove();
-            sendResponse({ success: true });
-          }} 
-        />
-      );
+        // Add reset styles
+        const resetStyles = document.createElement('style');
+        resetStyles.textContent = `
+          :host {
+            all: initial !important;
+            display: block !important;
+            position: fixed !important;
+            z-index: 2147483647 !important;
+            font-family: system-ui, -apple-system, sans-serif !important;
+          }
+          * {
+            box-sizing: border-box !important;
+          }
+        `;
+        shadowRoot.appendChild(resetStyles);
+
+        // Add Pico CSS
+        const picoStyles = document.createElement('link');
+        picoStyles.rel = 'stylesheet';
+        picoStyles.href = chrome.runtime.getURL('assets/index.css');
+        shadowRoot.appendChild(picoStyles);
+
+        // Create container for React
+        const container = document.createElement('div');
+        shadowRoot.appendChild(container);
+
+        const root = ReactDOM.createRoot(container);
+        root.render(
+          <FloatingPage 
+            onClose={() => {
+              root.unmount();
+              hostContainer.remove();
+              sendResponse({ success: true });
+            }} 
+          />
+        );
+      } catch (error) {
+        console.error('Error initializing floating page:', error);
+      }
     }
     return true;
   });
