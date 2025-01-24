@@ -1,6 +1,6 @@
 import React from 'react';
 import * as ReactDOM from 'react-dom/client';
-import './content.css'; // Import the CSS file
+import './Autofill.css'; // Import the CSS file
 
 (function() {
   const FloatingPage = ({ onClose }) => {
