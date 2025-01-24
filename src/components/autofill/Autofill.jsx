@@ -1,41 +1,87 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import * as ReactDOM from 'react-dom/client';
-import '../../app.css';
 
-export const FloatingPage = ({ onClose, isPreview = false }) => {
-  const containerStyle = {
-    position: 'fixed',
-    top: '20px',
-    right: '20px',
-    zIndex: 2147483647,
-    backgroundColor: 'white',
-    width: '600px',
-    maxHeight: 'calc(100vh - 40px)',
-    border: '1px solid #ddd',
-    borderRadius: '8px',
-    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden'
+export const FloatingPage = ({ onClose }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [position, setPosition] = useState({ x: window.innerWidth - 60, y: 20 });
+  const dragRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+
+  const handleMouseDown = (e) => {
+    if (!isExpanded) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.clientX - position.x,
+        y: e.clientY - position.y
+      });
+    }
   };
 
-  // Add preview-specific styles
-  if (isPreview) {
-    containerStyle.position = 'relative';
-    containerStyle.margin = '20px auto';
-    containerStyle.left = 'auto';
-    containerStyle.right = 'auto';
-  }
+  const handleMouseMove = (e) => {
+    if (isDragging) {
+      setPosition({
+        x: e.clientX - dragStart.x,
+        y: e.clientY - dragStart.y
+      });
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, dragStart]);
 
   return (
-    <div id="yaoguai-floating-container" style={containerStyle}>
-      <div className="floating-header">
-        <h2>Auto Fill {isPreview && '(Preview Mode)'}</h2>
-        <button className="close-button" onClick={onClose}>×</button>
-      </div>
-      <div className="floating-content">
-        <p>This is the floating page for auto-filling.</p>
-      </div>
+    <div 
+      id="yaoguai-floating-container" 
+      className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'}`}
+      style={{
+        top: isExpanded ? '20px' : `${position.y}px`,
+        left: isExpanded ? 'auto' : `${position.x}px`,
+        cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab')
+      }}
+      onMouseDown={handleMouseDown}
+      ref={dragRef}
+    >
+      {isExpanded ? (
+        <article style={{ margin: 0 }}>
+          <header onClick={() => setIsExpanded(false)}>
+            <nav>
+              <ul>
+                <li><h3>Auto Fill</h3></li>
+              </ul>
+              <ul>
+                <li>
+                  <button className="outline contrast" onClick={onClose}>×</button>
+                </li>
+              </ul>
+            </nav>
+          </header>
+          <main>
+            <details>
+              <summary>Auto Fill Options</summary>
+              <p>This is the floating page for auto-filling.</p>
+            </details>
+          </main>
+        </article>
+      ) : (
+        <button 
+          className="contrast floating-button"
+          onClick={() => setIsExpanded(true)}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+        >
+          ⚡
+        </button>
+      )}
     </div>
   );
 };

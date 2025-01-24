@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { DEFAULT_PROFILE_STRUCTURE, LABELS } from '../Constants';
-import { FloatingPage } from '../autofill/Autofill';
+import { FloatingPage } from '../autofill/AutoFill';
 
 const ResumeSection = ({ title, data, isEditing }) => {
   const renderContent = () => {

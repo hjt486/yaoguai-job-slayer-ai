@@ -7,7 +7,7 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     lib: {
-      entry: resolve(__dirname, 'src/components/autofill/Autofill.jsx'),
+      entry: resolve(__dirname, 'src/components/autofill/AutoFill.jsx'),
       name: 'Content',
       formats: ['iife']
     },
