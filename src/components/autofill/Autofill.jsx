@@ -156,16 +156,33 @@ export const showFloatingPage = (onClose) => {
 
 // Use for Extension mode
 const initializeContentScript = () => {
+  console.log('[YaoguaiAI] Content script initializing...');
+  
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    if (message.action === 'openFloatingPage') {
-      mountFloatingPage(null, sendResponse);
+    console.log('[YaoguaiAI] Message received in content script:', message);
+    console.log('[YaoguaiAI] Sender:', sender);
+    
+    if (message && message.action === 'openFloatingPage') {
+      console.log('[YaoguaiAI] Attempting to mount floating page...');
+      try {
+        const container = mountFloatingPage(null, sendResponse);
+        console.log('[YaoguaiAI] Floating page mounted successfully', container);
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error('[YaoguaiAI] Error mounting floating page:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    } else {
+      console.log('[YaoguaiAI] Received message with unknown action:', message);
     }
     return true;
   });
+
+  console.log('[YaoguaiAI] Content script initialized and listening for messages');
 };
 
 if (typeof chrome !== 'undefined' && chrome.runtime) {
-  console.log('Initializing content script...');
+  console.log('[YaoguaiAI] Chrome extension environment detected');
   initializeContentScript();
 }
 

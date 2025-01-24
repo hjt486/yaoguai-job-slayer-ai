@@ -77,7 +77,44 @@ const Resume = () => {
 
   const handleAutoFill = async () => {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
-      // Original extension code remains the same
+      try {
+        console.log('[YaoguaiAI] Getting active tab...');
+        const [tab] = await chrome.tabs.query({ 
+          active: true, 
+          currentWindow: true 
+        });
+
+        if (!tab) {
+          console.error('[YaoguaiAI] No active tab found');
+          return;
+        }
+
+        // First, try to inject the content script
+        console.log('[YaoguaiAI] Injecting content script...');
+        try {
+          await chrome.scripting.executeScript({
+            target: { tabId: tab.id },
+            files: ['content.js']
+          });
+          console.log('[YaoguaiAI] Content script injected successfully');
+        } catch (err) {
+          console.log('[YaoguaiAI] Content script already exists or injection failed:', err);
+        }
+
+        // Wait a moment for the content script to initialize
+        await new Promise(resolve => setTimeout(resolve, 100));
+
+        // Now try to send the message
+        console.log('[YaoguaiAI] Sending message to tab:', tab.id);
+        const response = await chrome.tabs.sendMessage(tab.id, { 
+          action: 'openFloatingPage',
+          source: 'popup'
+        });
+        console.log('[YaoguaiAI] Response received:', response);
+        window.close();
+      } catch (error) {
+        console.error('[YaoguaiAI] Error in handleAutoFill:', error);
+      }
     } else {
       // DEV mode: toggle floating page with proper Shadow DOM
       if (!floatingInstance) {
