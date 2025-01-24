@@ -27,9 +27,5 @@
     "16": "vite.svg",
     "48": "vite.svg",
     "128": "vite.svg"
-  },
-  "web_accessible_resources": [{
-    "resources": ["assets/*.css", "assets/*.js"],
-    "matches": ["<all_urls>"]
-  }]
+  }
 }
