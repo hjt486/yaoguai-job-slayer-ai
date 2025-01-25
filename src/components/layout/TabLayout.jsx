@@ -1,5 +1,5 @@
 import React from 'react';
-import { SITE_LOGO } from '../Constants';
+import { SITE_LOGO } from '../common/Constants';
 
 const TabLayout = ({ activeTab, onTabChange, children }) => {
   return (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { SITE_LOGO } from '../Constants';
+import { SITE_LOGO } from '../common/Constants';
 import Register from './Register';
 import { authService } from '../../services/authService';
 
