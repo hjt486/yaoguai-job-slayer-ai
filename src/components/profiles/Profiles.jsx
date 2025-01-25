@@ -15,6 +15,13 @@ const Profiles = () => {
   const [currentProfileId, setCurrentProfileId] = useState(null);
   const fileInputRef = useRef(null);
 
+  // Add function to check if resume exists for a profile
+  const hasResume = (profileId) => {
+    const resumeKey = `resume_${profileId}`;
+    const storedResume = localStorage.getItem(resumeKey);
+    return !!storedResume;
+  };
+
   const allowedFileTypes = [
     'application/pdf',
     'application/msword',
@@ -28,83 +35,7 @@ const Profiles = () => {
     fileInputRef.current.click();
   };
 
-  useEffect(() => {
-    loadProfiles();
-    // Load saved resume name if exists
-    const storedResume = JSON.parse(localStorage.getItem('storedResume'));
-    if (storedResume) {
-      setResumeName(storedResume.name);
-    }
-    // Check for current profile
-    const currentProfile = JSON.parse(localStorage.getItem('currentProfile'));
-    if (currentProfile) {
-      setCurrentProfileId(currentProfile.id);
-    }
-
-    // Add listener for profile updates
-    const handleProfileUpdate = (e) => {
-      console.log('Profile update received:', e.detail.profile);
-      loadProfiles();  // Reload profiles when update received
-    };
-
-    window.addEventListener('profileUpdated', handleProfileUpdate);
-    window.addEventListener('storage', loadProfiles);
-    
-    return () => {
-      window.removeEventListener('profileUpdated', handleProfileUpdate);
-      window.removeEventListener('storage', loadProfiles);
-    };
-  }, []);
-
-
-  const handleFileChange = async (event) => {
-    const file = event.target.files[0];
-    if (file && allowedFileTypes.includes(file.type)) {
-      // Clear previous resume if exists
-      localStorage.removeItem('storedResume');
-
-      // First update the UI
-      setSelectedFile(file);
-      setResumeName(file.name);
-      setError('');
-
-      // Then store new file in base64 format
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64File = reader.result;
-        const resumeData = {
-          name: file.name,
-          type: file.type,
-          content: base64File,
-          timestamp: new Date().toISOString()
-        };
-        localStorage.setItem('storedResume', JSON.stringify(resumeData));
-      };
-      reader.readAsDataURL(file);
-    } else {
-      setSelectedFile(null);
-      setResumeName('');
-      setError('Please select a valid file (PDF, DOC, DOCX, TEX, or TXT)');
-    }
-  };
-
-  // Add download handler
-  const handleDownloadResume = () => {
-    const storedResume = JSON.parse(localStorage.getItem('storedResume'));
-    if (!storedResume) {
-      setError('No resume file found');
-      return;
-    }
-
-    // Create and trigger download
-    const link = document.createElement('a');
-    link.href = storedResume.content;
-    link.download = storedResume.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
+  // Move loadProfiles before useEffect
   const loadProfiles = () => {
     const currentUser = authService.getCurrentUser();
     const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
@@ -120,9 +51,113 @@ const Profiles = () => {
     setProfiles(profilesArray);
   };
 
-  const handleDeleteProfile = (id) => {
-    if (id === 1) return;
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
 
+    // Clear all user-specific data if no profiles exist for this user
+    if (!storedProfiles[currentUser.id]) {
+      // Clear resume data
+      localStorage.removeItem('storedResume');
+      localStorage.removeItem(`resumeOwner_${currentUser.id}`);
+      
+      // Clear current profile
+      localStorage.removeItem('currentProfile');
+      
+      // Clear any generated PDFs
+      localStorage.removeItem('generatedPDF_1');
+      localStorage.removeItem('pdfFileName_1');
+      localStorage.removeItem('coverLetter_1');
+      localStorage.removeItem('coverLetterFileName_1');
+      
+      setResumeName('');
+      setSelectedFile(null);
+      setCurrentProfileId(null);
+    }
+
+    loadProfiles();
+
+    // Load saved resume name if exists and belongs to current user
+    const storedResume = JSON.parse(localStorage.getItem('storedResume'));
+    if (storedResume && localStorage.getItem(`resumeOwner_${currentUser.id}`)) {
+      setResumeName(storedResume.name);
+    }
+
+    // Add listener for profile updates
+    const handleProfileUpdate = (e) => {
+      console.log('Profile update received:', e.detail.profile);
+      loadProfiles();
+    };
+
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('storage', loadProfiles);
+    
+    return () => {
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('storage', loadProfiles);
+    };
+  }, []);
+
+
+  const handleFileChange = async (event) => {
+    const file = event.target.files[0];
+    if (file && allowedFileTypes.includes(file.type)) {
+      const currentUser = authService.getCurrentUser();
+      const currentProfile = JSON.parse(localStorage.getItem('currentProfile'));
+      
+      if (!currentProfile) {
+        setError('Please select a profile first');
+        return;
+      }
+      
+      // Store resume with profile ID
+      const resumeKey = `resume_${currentProfile.id}`;
+      localStorage.removeItem(resumeKey);
+
+      // First update the UI
+      setSelectedFile(file);
+      setResumeName(file.name);
+      setError('');
+
+      // Then store new file in base64 format with profile ID
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64File = reader.result;
+        const resumeData = {
+          name: file.name,
+          type: file.type,
+          content: base64File,
+          timestamp: new Date().toISOString(),
+          profileId: currentProfile.id
+        };
+        localStorage.setItem(resumeKey, JSON.stringify(resumeData));
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setSelectedFile(null);
+      setResumeName('');
+      setError('Please select a valid file (PDF, DOC, DOCX, TEX, or TXT)');
+    }
+  };
+
+  // Update download handler
+  const handleDownloadResume = (profileId) => {
+    const resumeKey = `resume_${profileId}`;
+    const storedResume = JSON.parse(localStorage.getItem(resumeKey));
+    if (!storedResume) {
+      setError('No resume file found for this profile');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = storedResume.content;
+    link.download = storedResume.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleDeleteProfile = (id) => {
     const currentUser = authService.getCurrentUser();
     const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
 
@@ -131,9 +166,10 @@ const Profiles = () => {
       delete storedProfiles[currentUser.id][id];
       localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
 
-      // Remove associated PDF files and filenames
+      // Remove associated data
+      localStorage.removeItem(`resume_${id}`);
       localStorage.removeItem(`generatedPDF_${id}`);
-      localStorage.removeItem(`generatedPDFFileName_${id}`);
+      localStorage.removeItem(`pdfFileName_${id}`);
       localStorage.removeItem(`coverLetter_${id}`);
       localStorage.removeItem(`coverLetterFileName_${id}`);
 
@@ -142,6 +178,8 @@ const Profiles = () => {
       if (currentProfile && currentProfile.id === id) {
         localStorage.removeItem('currentProfile');
         setCurrentProfileId(null);
+        setSelectedFile(null);
+        setResumeName('');
       }
 
       loadProfiles();
@@ -369,19 +407,20 @@ const Profiles = () => {
             >
               Copy
             </button>
-            {profile.id === 1 ? (
-              <button className='button-full'
-                onClick={handleDownloadResume}>
-                Download Resume
-              </button>
-            ) : (
+            {hasResume(profile.id) && (
               <button
                 className='button-full'
-                onClick={() => handleDeleteProfile(profile.id)}
+                onClick={() => handleDownloadResume(profile.id)}
               >
-                Delete
+                Download Resume
               </button>
             )}
+            <button
+              className='button-full'
+              onClick={() => handleDeleteProfile(profile.id)}
+            >
+              Delete
+            </button>
           </div>
         </article>
       ))}
