@@ -46,7 +46,7 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId) =
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
       pdf.text(profile.personal.fullName || '', pageWidth / 2, yPos, { align: 'center' });
-      
+
       yPos += 20;
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
@@ -57,12 +57,13 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId) =
         profile.personal.linkedin,
         profile.personal.location
       ].filter(Boolean).join(' • ');
-      
+
       const contactLines = pdf.splitTextToSize(contactInfo, usableWidth);
       pdf.text(contactLines, pageWidth / 2, yPos, { align: 'center' });
       yPos += (contactLines.length * 12) + 20;
 
       if (profile.personal.summary) {
+        addSectionHeader('Summary');
         const summaryLines = pdf.splitTextToSize(profile.personal.summary, usableWidth);
         pdf.text(summaryLines, margin, yPos);
         yPos += (summaryLines.length * 12) + 20;
@@ -89,7 +90,7 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId) =
         pdf.text(exp.company || '', margin, yPos);
         const dateText = `${formatDate(exp.startDate)} - ${exp.endDate ? formatDate(exp.endDate) : 'Present'}`;
         pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
-        
+
         yPos += 15;
         pdf.setFont('helvetica', 'italic');
         const titleLocation = `${exp.jobTitle}${exp.location ? ` - ${exp.location}` : ''}`;
@@ -121,7 +122,7 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId) =
         pdf.text(edu.school || '', margin, yPos);
         const dateText = `${formatDate(edu.startDate)} - ${edu.endDate ? formatDate(edu.endDate) : 'Present'}`;
         pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
-        
+
         yPos += 15;
         if (edu.degree || edu.field) {
           pdf.setFont('helvetica', 'italic');
@@ -171,9 +172,15 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId) =
         checkNewPage();
         if (ach.name) {
           pdf.setFont('helvetica', 'bold');
-          const achievementHeader = `${ach.name}${ach.issuer ? ` from ${ach.issuer}` : ''}${ach.awardedDate ? ` (${ach.awardedDate})` : ''}`;
-          const lines = pdf.splitTextToSize(achievementHeader, usableWidth);
+          const achievementHeader = `${ach.name}${ach.issuer ? ` from ${ach.issuer}` : ''}`;
+          const lines = pdf.splitTextToSize(achievementHeader, usableWidth - 150); // Reserve space for date
           pdf.text(lines, margin, yPos);
+
+          if (ach.awardedDate) {
+            const dateText = formatDate(ach.awardedDate);
+            pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
+          }
+
           yPos += (lines.length * 12);
         }
 
@@ -202,7 +209,7 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId) =
 export const downloadStoredPDF = (profileId) => {
   const pdfData = localStorage.getItem(`generatedPDF_${profileId}`);
   const fileName = localStorage.getItem(`pdfFileName_${profileId}`);
-  
+
   if (!pdfData) return false;
 
   const link = document.createElement('a');
