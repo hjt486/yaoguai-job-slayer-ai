@@ -524,8 +524,8 @@ const Resume = () => {
 
     const success = await generatePDF(profile, fileName, profile.id, true);
     if (success) {
-      // Store cover letter filename separately from resume filename
       localStorage.setItem(`coverLetterFileName_${profile.id}`, fileName);
+      localStorage.setItem(`generatedPDF_${profile.id}_coverLetter`, 'true');
       setCoverLetterGenerated(true);
     }
     return success;
