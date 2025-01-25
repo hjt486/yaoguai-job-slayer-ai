@@ -95,35 +95,37 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
           <div className="skills-grid">
             {data.map((skill, index) => (
               <div key={index} className="skill-item">
-                {isEditing && (
-                  <button
-                    className="button-small delete-button"
-                    onClick={() => onEdit(section, { action: 'delete', index })}
-                  >
-                    ×
-                  </button>
-                )}
                 {isEditing ? (
-                  <input
-                    type="text"
-                    value={skill || ''}
-                    onChange={(e) => onEdit(section, {
-                      key: 'skill',
-                      value: e.target.value,
-                      index
-                    })}
-                  />
+                  <div className="skill-edit-container">
+                    <input
+                      type="text"
+                      value={skill || ''}
+                      onChange={(e) => onEdit(section, {
+                        key: 'skill',
+                        value: e.target.value,
+                        index
+                      })}
+                    />
+                    <button
+                      className="button-small delete-button"
+                      onClick={() => onEdit(section, { action: 'delete', index })}
+                    >
+                      ×
+                    </button>
+                  </div>
                 ) : (
-                  <span style={{
-                    display: 'inline-block',
-                    margin: '0.2em 0.5em 0.2em 0',
-                    padding: '0.2em 0.5em',
-                    backgroundColor: 'var(--secondary-hover)',
-                    borderRadius: '4px'
-                  }}>{skill}</span>
+                  <span>{skill}</span>
                 )}
               </div>
             ))}
+            {isEditing && (
+              <button
+                className="button-small add-button"
+                onClick={() => onEdit(section, { action: 'add' })}
+              >
+                Add Skill
+              </button>
+            )}
           </div>
         );
       }
@@ -361,7 +363,11 @@ const Resume = () => {
       if (Array.isArray(currentValue)) {
         if (section === 'skills') {
           const newSkills = [...currentValue];
-          if (updates && updates.key === 'skill') {
+          if (updates.action === 'delete') {
+            newSkills.splice(updates.index, 1);
+          } else if (updates.action === 'add') {
+            newSkills.push('');
+          } else if (updates.key === 'skill') {
             newSkills[updates.index] = updates.value;
           }
           return {

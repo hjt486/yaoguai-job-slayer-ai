@@ -153,7 +153,8 @@ export const DATE_TIME_FIELDS = [
 
 export const DATE_FIELDS = [
   'startDate',
-  'endDate'
+  'endDate',
+  'awardedDate',
 ];
 
 export const NOT_EDITABLE_FIELDS = [
