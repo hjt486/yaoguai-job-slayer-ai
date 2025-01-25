@@ -13,14 +13,9 @@ const Profiles = () => {
   const [error, setError] = useState('');
   const [isParsing, setIsParsing] = useState(false);
   const [currentProfileId, setCurrentProfileId] = useState(null);
+  const [pastedResume, setPastedResume] = useState('');
+  const [showPasteDialog, setShowPasteDialog] = useState(false);
   const fileInputRef = useRef(null);
-
-  // Add function to check if resume exists for a profile
-  const hasResume = (profileId) => {
-    const resumeKey = `resume_${profileId}`;
-    const storedResume = localStorage.getItem(resumeKey);
-    return !!storedResume;
-  };
 
   const allowedFileTypes = [
     'application/pdf',
@@ -51,111 +46,86 @@ const Profiles = () => {
     setProfiles(profilesArray);
   };
 
+  // Add handler for input click
+  const handleInputClick = () => {
+    setShowPasteDialog(true);
+  };
+
+  // Add handler for paste dialog confirmation
+  const handlePasteConfirm = () => {
+    if (pastedResume.trim()) {
+      setSelectedFile(null);
+      setResumeName(pastedResume.split(' ').slice(0, 5).join(' ') + '...');
+      setShowPasteDialog(false);
+    }
+  };
+
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
     const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const lastLoadedProfileId = localStorage.getItem(`lastLoadedProfile_${currentUser.id}`);
 
     // Clear all user-specific data if no profiles exist for this user
     if (!storedProfiles[currentUser.id]) {
-      // Clear resume data
-      localStorage.removeItem('storedResume');
-      localStorage.removeItem(`resumeOwner_${currentUser.id}`);
-      
-      // Clear current profile
       localStorage.removeItem('currentProfile');
-      
-      // Clear any generated PDFs
-      localStorage.removeItem('generatedPDF_1');
-      localStorage.removeItem('pdfFileName_1');
-      localStorage.removeItem('coverLetter_1');
-      localStorage.removeItem('coverLetterFileName_1');
-      
-      setResumeName('');
-      setSelectedFile(null);
       setCurrentProfileId(null);
+      setSelectedFile(null);
+      setResumeName('');
+      setPastedResume('');
+    } else if (lastLoadedProfileId && storedProfiles[currentUser.id][lastLoadedProfileId]) {
+      // Load the last used profile if it exists
+      handleLoadProfile(storedProfiles[currentUser.id][lastLoadedProfileId]);
+    } else {
+      // Load the first available profile as fallback
+      const firstProfile = Object.values(storedProfiles[currentUser.id])[0];
+      if (firstProfile) {
+        handleLoadProfile(firstProfile);
+      }
     }
 
     loadProfiles();
-
-    // Load saved resume name if exists and belongs to current user
-    const storedResume = JSON.parse(localStorage.getItem('storedResume'));
-    if (storedResume && localStorage.getItem(`resumeOwner_${currentUser.id}`)) {
-      setResumeName(storedResume.name);
-    }
 
     // Add listener for profile updates
     const handleProfileUpdate = (e) => {
       console.log('Profile update received:', e.detail.profile);
       loadProfiles();
+      setCurrentProfileId(e.detail.profile.id);
     };
 
-    window.addEventListener('profileUpdated', handleProfileUpdate);
-    window.addEventListener('storage', loadProfiles);
-    
+    const handleStorageChange = () => {
+      loadProfiles();
+      const updatedProfile = JSON.parse(localStorage.getItem('currentProfile'));
+      if (updatedProfile) {
+        setCurrentProfileId(updatedProfile.id);
+      }
+    };
+
+    window.addEventListener('profileLoaded', handleProfileUpdate);
+    window.addEventListener('storage', handleStorageChange);
+
     return () => {
-      window.removeEventListener('profileUpdated', handleProfileUpdate);
-      window.removeEventListener('storage', loadProfiles);
+      window.removeEventListener('profileLoaded', handleProfileUpdate);
+      window.removeEventListener('storage', handleStorageChange);
     };
   }, []);
 
 
+  // Modify handleFileChange
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (file && allowedFileTypes.includes(file.type)) {
-      const currentUser = authService.getCurrentUser();
-      const currentProfile = JSON.parse(localStorage.getItem('currentProfile'));
-      
-      if (!currentProfile) {
-        setError('Please select a profile first');
-        return;
-      }
-      
-      // Store resume with profile ID
-      const resumeKey = `resume_${currentProfile.id}`;
-      localStorage.removeItem(resumeKey);
-
-      // First update the UI
       setSelectedFile(file);
       setResumeName(file.name);
+      setPastedResume(''); // Clear any pasted resume
       setError('');
-
-      // Then store new file in base64 format with profile ID
-      const reader = new FileReader();
-      reader.onload = () => {
-        const base64File = reader.result;
-        const resumeData = {
-          name: file.name,
-          type: file.type,
-          content: base64File,
-          timestamp: new Date().toISOString(),
-          profileId: currentProfile.id
-        };
-        localStorage.setItem(resumeKey, JSON.stringify(resumeData));
-      };
-      reader.readAsDataURL(file);
     } else {
       setSelectedFile(null);
       setResumeName('');
+      setPastedResume('');
       setError('Please select a valid file (PDF, DOC, DOCX, TEX, or TXT)');
     }
   };
 
-  // Update download handler
-  const handleDownloadResume = (profileId) => {
-    const resumeKey = `resume_${profileId}`;
-    const storedResume = JSON.parse(localStorage.getItem(resumeKey));
-    if (!storedResume) {
-      setError('No resume file found for this profile');
-      return;
-    }
-
-    const link = document.createElement('a');
-    link.href = storedResume.content;
-    link.download = storedResume.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
 
   const handleDeleteProfile = (id) => {
     const currentUser = authService.getCurrentUser();
@@ -173,13 +143,20 @@ const Profiles = () => {
       localStorage.removeItem(`coverLetter_${id}`);
       localStorage.removeItem(`coverLetterFileName_${id}`);
 
-      // If the deleted profile was the current profile, clear currentProfile
+      // If the deleted profile was the current profile
       const currentProfile = JSON.parse(localStorage.getItem('currentProfile'));
       if (currentProfile && currentProfile.id === id) {
-        localStorage.removeItem('currentProfile');
-        setCurrentProfileId(null);
-        setSelectedFile(null);
-        setResumeName('');
+        // Find another profile to load if available
+        const remainingProfiles = Object.values(storedProfiles[currentUser.id]);
+        if (remainingProfiles.length > 0) {
+          // Load the first available profile
+          handleLoadProfile(remainingProfiles[0]);
+        } else {
+          localStorage.removeItem('currentProfile');
+          setCurrentProfileId(null);
+          setSelectedFile(null);
+          setResumeName('');
+        }
       }
 
       loadProfiles();
@@ -188,7 +165,7 @@ const Profiles = () => {
 
   // Update handleParse to handle profile updates
   const handleParse = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile && !pastedResume) return;
     setIsParsing(true);
     setError('');
 
@@ -200,8 +177,15 @@ const Profiles = () => {
         throw new Error('Please configure API settings first');
       }
 
-      const parsedDoc = await parseDocument(selectedFile);
-      const aiResponse = await aiService.parseResume(apiSettings, parsedDoc.content);
+      let parsedContent;
+      if (selectedFile) {
+        const parsedDoc = await parseDocument(selectedFile);
+        parsedContent = parsedDoc.content;
+      } else {
+        parsedContent = pastedResume;
+      }
+
+      const aiResponse = await aiService.parseResume(apiSettings, parsedContent);
 
       // Extract JSON from AI response
       const content = aiResponse.choices[0].message.content;
@@ -219,37 +203,67 @@ const Profiles = () => {
         throw new Error('Failed to parse AI response into valid JSON');
       }
 
-      // Update profiles state and localStorage
-      const defaultProfile = {
-        id: 1,
+      // Find the next available ID
+      const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+      if (!storedProfiles[currentUser.id]) {
+        storedProfiles[currentUser.id] = {};
+      }
+      const existingIds = Object.keys(storedProfiles[currentUser.id]).map(Number);
+      const nextId = Math.max(0, ...existingIds) + 1;
+
+      // Create new profile with parsed data
+      const newProfile = {
+        id: nextId,
         ...DEFAULT_PROFILE_STRUCTURE,
         ...resumeData,
         metadata: {
           ...DEFAULT_PROFILE_STRUCTURE.metadata,
           ...resumeData.metadata,
-          createdAt: getCurrentISOString(),  // Add creation time
+          profileName: `Profile ${nextId}`,
+          createdAt: getCurrentISOString(),
           lastModified: getCurrentISOString(),
           resumeName: resumeName
         }
       };
 
-      setProfiles(prev => {
-        const filtered = prev.filter(p => p.id !== 1);
-        const updated = [defaultProfile, ...filtered];
+      // Save the resume file if it exists
+      if (selectedFile) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64File = reader.result;
+          const resumeFileData = {
+            name: selectedFile.name,
+            type: selectedFile.type,
+            content: base64File,
+            timestamp: new Date().toISOString(),
+            profileId: newProfile.id
+          };
+          localStorage.setItem(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
+        };
+        reader.readAsDataURL(selectedFile);
+      } else if (pastedResume) {
+        // Save pasted resume as text file
+        const blob = new Blob([pastedResume], { type: 'text/plain' });
+        const reader = new FileReader();
+        reader.onload = () => {
+          const resumeFileData = {
+            name: 'pasted_resume.txt',
+            type: 'text/plain',
+            content: reader.result,
+            timestamp: new Date().toISOString(),
+            profileId: newProfile.id
+          };
+          localStorage.setItem(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
+        };
+        reader.readAsDataURL(blob);
+      }
 
-        // Update localStorage
-        const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-        if (!storedProfiles[currentUser.id]) {
-          storedProfiles[currentUser.id] = {};
-        }
-        storedProfiles[currentUser.id]['1'] = defaultProfile;
-        localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
-
-        // Set as current profile
-        handleLoadProfile(defaultProfile);
-
-        return updated;
-      });
+      // Update localStorage and state
+      storedProfiles[currentUser.id][nextId] = newProfile;
+      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+      
+      setProfiles(prev => [...prev, newProfile]);
+      handleLoadProfile(newProfile);
 
     } catch (err) {
       console.error('Parse error:', err);
@@ -261,7 +275,17 @@ const Profiles = () => {
 
   // Add function to handle setting current profile
   const handleLoadProfile = (profile) => {
+    const currentUser = authService.getCurrentUser();
+    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    
+    // Verify profile belongs to current user
+    if (!storedProfiles[currentUser.id]?.[profile.id]) {
+      setError('Profile not found');
+      return;
+    }
+
     localStorage.setItem('currentProfile', JSON.stringify(profile));
+    localStorage.setItem(`lastLoadedProfile_${currentUser.id}`, profile.id);
     setCurrentProfileId(profile.id);
     window.dispatchEvent(new CustomEvent('profileLoaded', {
       detail: { profile }
@@ -288,7 +312,7 @@ const Profiles = () => {
       metadata: {
         ...DEFAULT_PROFILE_STRUCTURE.metadata,
         profileName: `Profile ${nextId}`,
-        createdAt: getCurrentISOString(),  // Add creation time
+        createdAt: getCurrentISOString(),
         lastModified: getCurrentISOString()
       }
     };
@@ -297,8 +321,9 @@ const Profiles = () => {
     storedProfiles[currentUser.id][nextId] = newProfile;
     localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
 
-    // Refresh profiles list
+    // Refresh profiles list and load the new profile
     loadProfiles();
+    handleLoadProfile(newProfile);  // Add this line to automatically load the new profile
   };
 
   const handleCopyProfile = (profileToCopy) => {
@@ -338,11 +363,13 @@ const Profiles = () => {
       <fieldset role="group">
         <button type="button" onClick={handleFileSelect}>Load</button>
         <input
-          name="resume_name"
+          name="resume_text"
           type="text"
-          placeholder="Load a resume"
+          placeholder="or paste a resume here"
           readOnly
           value={resumeName || ''}
+          onClick={handleInputClick}
+          style={{ cursor: 'pointer' }}
         />
         <input
           ref={fileInputRef}
@@ -353,19 +380,47 @@ const Profiles = () => {
         />
         <LoadingButton
           onClick={handleParse}
-          disabled={!selectedFile}
+          disabled={!selectedFile && !pastedResume}
           loadingText=""
-          timeout={30000}
+          timeout={60000}
         >
           Parse
         </LoadingButton>
       </fieldset>
+
       {error && <small style={{ color: 'red' }}>{error}</small>}
       {isParsing && (
         <div style={{ marginTop: '1rem' }}>
           <progress></progress>
           <small>Analyzing resume content...</small>
         </div>
+      )}
+
+{showPasteDialog && (
+        <dialog open>
+          <article>
+            <header>
+              <h3>Paste Resume Text</h3>
+            </header>
+            <textarea
+              value={pastedResume}
+              onChange={(e) => setPastedResume(e.target.value)}
+              rows={10}
+              placeholder="Paste your resume text here..."
+            />
+            <footer>
+              <div role="group">
+                <button onClick={handlePasteConfirm}>Confirm</button>
+                <button 
+                  className="secondary" 
+                  onClick={() => setShowPasteDialog(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </footer>
+          </article>
+        </dialog>
       )}
 
       {profiles.map(profile => (
@@ -387,11 +442,11 @@ const Profiles = () => {
                 <div><small>Phone: {profile.personal.phone}</small></div>
               </>
             )}
-              <strong>
-                <small>
-                  Last modified: {formatDateTime(profile.metadata?.lastModified || profile.lastModified)}
-                </small>
-              </strong>
+            <strong>
+              <small>
+                Last modified: {formatDateTime(profile.metadata?.lastModified || profile.lastModified)}
+              </small>
+            </strong>
           </div>
           <div className='grid-vertical'>
             <button
@@ -407,14 +462,6 @@ const Profiles = () => {
             >
               Copy
             </button>
-            {hasResume(profile.id) && (
-              <button
-                className='button-full'
-                onClick={() => handleDownloadResume(profile.id)}
-              >
-                Download Resume
-              </button>
-            )}
             <button
               className='button-full'
               onClick={() => handleDeleteProfile(profile.id)}

@@ -205,6 +205,9 @@ const Settings = () => {
             </button>
           </div>
         </form>
+        <div className='text-muted text-right'>
+          <p>Developed by <a href="https://jiataihan.dev/" target="_blank" rel="noopener noreferrer">Jiatai Han</a></p>
+        </div>
       </article>
 
       <Modal

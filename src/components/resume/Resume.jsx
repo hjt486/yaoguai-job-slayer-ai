@@ -15,7 +15,7 @@ import { generatePDF, downloadStoredPDF } from '../common/pdfUtils';
 import { LoadingButton } from '../common/LoadingButton';
 import moment from 'moment';
 
-const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
+const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [originalData, setOriginalData] = useState(null);
 
@@ -36,6 +36,23 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
 
   const getFormattedDate = (key, value) => {
     if (!value) return '';
+    if (key === 'resumeName') {
+      const resumeKey = `resume_${profile.id}`;
+      const storedResume = JSON.parse(localStorage.getItem(resumeKey));
+      if (storedResume) {
+        return (
+          <a href="#" onClick={(e) => {
+            e.preventDefault();
+            handleDownloadLoadedResume(profile.id);
+          }}
+            style={{ textDecoration: 'underline' }}
+          >
+            {value || storedResume.name}
+          </a>
+        );
+      }
+      return <small>{value || 'No resume uploaded'}</small>;
+    }
     if (DATE_TIME_FIELDS.includes(key)) {
       return formatDateTime(value);
     }
@@ -44,6 +61,24 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
     }
     return value;
   };
+
+  // Update download handler
+  const handleDownloadLoadedResume = (profileId) => {
+    const resumeKey = `resume_${profileId}`;
+    const storedResume = JSON.parse(localStorage.getItem(resumeKey));
+    if (!storedResume) {
+      console.error('No resume file found for this profile');
+      return;
+    }
+
+    const link = document.createElement('a');
+    link.href = storedResume.content;
+    link.download = storedResume.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
 
   const renderInput = (key, value, index) => {
     if (NOT_EDITABLE_FIELDS.includes(key)) {
@@ -240,60 +275,90 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
 };
 
 const Resume = () => {
-  // Add new state for cover letter
-  const [profile, setProfile] = useState(DEFAULT_PROFILE_STRUCTURE);
+  const [profile, setProfile] = useState(null);
   const [pdfGenerated, setPdfGenerated] = useState(false);
   const [coverLetterGenerated, setCoverLetterGenerated] = useState(false);
-
-  // Update effect to check both PDF statuses
-  // Update the useEffect that checks PDF status
-  useEffect(() => {
-    const profileId = profile.id;
-    const pdfData = localStorage.getItem(`generatedPDF_${profileId}`);
-    const coverLetterData = localStorage.getItem(`generatedPDF_${profileId}_coverLetter`);
-    
-    setPdfGenerated(!!pdfData);
-    setCoverLetterGenerated(!!coverLetterData);
-  }, [profile]);
-
   const [editingSections, setEditingSections] = useState(new Set());
   const [floatingInstance, setFloatingInstance] = useState(null);
   const previewRef = useRef(null);
 
-  // Update effect to load saved profile and listen for changes
+  // Combined useEffect for profile loading and PDF status
   useEffect(() => {
-    // Load initial profile
+    // In the loadCurrentProfile function within useEffect
     const loadCurrentProfile = () => {
+      const currentUser = authService.getCurrentUser();
       const savedProfile = localStorage.getItem('currentProfile');
+
       if (savedProfile) {
-        setProfile(JSON.parse(savedProfile));
-      } else {
-        const currentUser = authService.getCurrentUser();
+        const parsedProfile = JSON.parse(savedProfile);
         const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-        const userProfiles = storedProfiles[currentUser.id] || {};
-        const defaultProfile = userProfiles['1'];
-        if (defaultProfile) {
-          setProfile(defaultProfile);
+
+        // Check if the currentUser exists and the profile belongs to them
+        if (!currentUser || !storedProfiles[currentUser.id]?.[parsedProfile.id]) {
+          localStorage.removeItem('currentProfile');
+          setProfile(null);
+          setPdfGenerated(false);
+          setCoverLetterGenerated(false);
+          return;
         }
+
+        setProfile(parsedProfile);
+        // Check PDF statuses
+        const pdfData = localStorage.getItem(`generatedPDF_${parsedProfile.id}`);
+        const coverLetterData = localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`);
+        setPdfGenerated(!!pdfData);
+        setCoverLetterGenerated(!!coverLetterData);
+      } else {
+        setProfile(null);
+        setPdfGenerated(false);
+        setCoverLetterGenerated(false);
       }
     };
 
-    // Load initial profile
     loadCurrentProfile();
 
-    // Listen for profile changes
     const handleProfileChange = (e) => {
-      setProfile(e.detail.profile);
+      const newProfile = e.detail.profile;
+      setProfile(newProfile);
+
+      if (newProfile) {
+        const pdfData = localStorage.getItem(`generatedPDF_${newProfile.id}`);
+        const coverLetterData = localStorage.getItem(`generatedPDF_${newProfile.id}_coverLetter`);
+        setPdfGenerated(!!pdfData);
+        setCoverLetterGenerated(!!coverLetterData);
+      }
+    };
+
+    // Add event listener for authentication changes
+    const handleAuthChange = () => {
+      loadCurrentProfile();
     };
 
     window.addEventListener('profileLoaded', handleProfileChange);
     window.addEventListener('storage', loadCurrentProfile);
+    authService.subscribe(handleAuthChange); // Assuming authService provides a subscribe method
 
     return () => {
       window.removeEventListener('profileLoaded', handleProfileChange);
       window.removeEventListener('storage', loadCurrentProfile);
+      authService.unsubscribe(handleAuthChange);
     };
   }, []);
+
+  // Preview effect - keep only this one, remove the duplicate at the bottom
+  useEffect(() => {
+    if (previewRef.current && profile) {
+      previewRef.current.innerHTML = showResumePreview();
+    }
+  }, [profile]);
+
+  if (!profile) {
+    return (
+      <article style={{ textAlign: 'center', padding: '2rem' }}>
+        <h3>Please create a profile</h3>
+      </article>
+    );
+  }
 
   const handleAutoFill = async () => {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
@@ -439,17 +504,6 @@ const Resume = () => {
     }));
   };
 
-  const handlePreviewResume = async () => {
-    try {
-      await generatePDF(profile);
-      if (previewRef.current) {
-        previewRef.current.innerHTML = showResumePreview();
-      }
-    } catch (error) {
-      console.error('Error generating preview:', error);
-    }
-  };
-
   const handleGeneratePDF = async () => {
     setPdfGenerated(false);
     const fileName = `${profile.personal?.fullName || 'Resume'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_resume`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
@@ -481,12 +535,6 @@ const Resume = () => {
     e.preventDefault();
     downloadStoredPDF(profile.id, true);
   };
-
-  useEffect(() => {
-    if (previewRef.current) {
-      previewRef.current.innerHTML = showResumePreview();
-    }
-  }, [profile]);
 
   // Update the buttons grid to include preview button
   return (
@@ -530,7 +578,7 @@ const Resume = () => {
           >
             Generate PDF Cover Letter
           </LoadingButton>
-          
+
           {coverLetterGenerated && (
             <>
               <small className="text-center text-muted">
@@ -553,6 +601,7 @@ const Resume = () => {
           section={section}
           title={label}
           data={profile[section]}
+          profile={profile}
           onEdit={handleSectionEdit}
           onSave={handleSectionSave}
         />

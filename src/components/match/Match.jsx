@@ -1,9 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const Match = () => {
   const [jobDescription, setJobDescription] = useState('');
   const [analysisResults, setAnalysisResults] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [currentProfile, setCurrentProfile] = useState(null);
+
+  useEffect(() => {
+    const loadCurrentProfile = () => {
+      const savedProfile = localStorage.getItem('currentProfile');
+      if (savedProfile) {
+        setCurrentProfile(JSON.parse(savedProfile));
+      }
+    };
+
+    loadCurrentProfile();
+
+    const handleProfileChange = (e) => {
+      setCurrentProfile(e.detail.profile);
+    };
+
+    window.addEventListener('profileLoaded', handleProfileChange);
+    window.addEventListener('storage', loadCurrentProfile);
+
+    return () => {
+      window.removeEventListener('profileLoaded', handleProfileChange);
+      window.removeEventListener('storage', loadCurrentProfile);
+    };
+  }, []);
+
+  if (!currentProfile) {
+    return (
+      <article style={{ textAlign: 'center', padding: '2rem' }}>
+        <h3>Please create a profile</h3>
+      </article>
+    );
+  }
 
   const handleAnalyze = () => {
     setIsAnalyzing(true);

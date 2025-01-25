@@ -287,11 +287,16 @@ nav {
   text-align: center;
 }
 
+.text-right {
+  text-align: right !important;
+}
+
 .text-muted {
   color: var(--pico-muted-color);
   font-size: 0.875em;
   margin: 0.5em 0;
 }
+
 
 /* Then replace the specific values with the variable */
 .resume-display .field-item {
