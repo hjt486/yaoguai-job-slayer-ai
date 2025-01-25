@@ -2,135 +2,214 @@ import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { LABELS } from './Constants';
 import { formatDate } from './dateUtils';
+import { saveAs } from 'file-saver';
 
-const createResumeHTML = (profile) => {
-  const container = document.createElement('div');
-  container.className = 'resume-preview';
-  container.style.cssText = `
-    width: 8.5in;
-    min-height: 11in;
-    padding: 0.5in;
-    margin: 0 auto;
-    background: white;
-    box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    font-family: Arial, sans-serif;
-  `;
+let lastGeneratedFileName = '';
 
-  // Header
-  const header = document.createElement('header');
-  if (profile.personal) {
-    const { name, email, phone, location, website, linkedin } = profile.personal;
-    header.innerHTML = `
-      ${name ? `<h1 style="margin: 0; font-size: 24px; text-align: center;">${name}</h1>` : ''}
-      <div style="text-align: center; margin-top: 8px; font-size: 14px;">
-        ${[email, phone, location, website, linkedin].filter(Boolean).join(' • ')}
-      </div>
-    `;
-  }
-  container.appendChild(header);
-
-  // Skills
-  if (profile.skills?.length > 0) {
-    const skillsSection = document.createElement('section');
-    skillsSection.innerHTML = `
-      <h2 style="border-bottom: 1px solid #000; font-size: 16px; margin-top: 20px;">
-        ${LABELS.sections.skills}
-      </h2>
-      <p style="margin-top: 8px; font-size: 14px; line-height: 1.4;">
-        ${profile.skills.join(', ')}
-      </p>
-    `;
-    container.appendChild(skillsSection);
-  }
-
-  // Experience
-  if (profile.experience?.length > 0) {
-    const expSection = document.createElement('section');
-    expSection.innerHTML = `
-      <h2 style="border-bottom: 1px solid #000; font-size: 16px; margin-top: 20px;">
-        ${LABELS.sections.experience}
-      </h2>
-      ${profile.experience.map(exp => `
-        <div style="margin-top: 12px;">
-          <div style="display: flex; justify-content: space-between; font-weight: bold;">
-            <span>${exp.company}</span>
-            <span>${formatDate(exp.startDate)} - ${formatDate(exp.endDate)}</span>
-          </div>
-          <div style="font-style: italic;">${exp.title}</div>
-          ${exp.responsibilities ? `
-            <ul style="margin-top: 8px; padding-left: 20px;">
-              ${exp.responsibilities.split('\n')
-                .filter(r => r.trim())
-                .map(r => `<li style="margin-bottom: 4px;">${r.trim()}</li>`)
-                .join('')}
-            </ul>
-          ` : ''}
-        </div>
-      `).join('')}
-    `;
-    container.appendChild(expSection);
-  }
-
-  // Education
-  if (profile.education?.length > 0) {
-    const eduSection = document.createElement('section');
-    eduSection.innerHTML = `
-      <h2 style="border-bottom: 1px solid #000; font-size: 16px; margin-top: 20px;">
-        ${LABELS.sections.education}
-      </h2>
-      ${profile.education.map(edu => `
-        <div style="margin-top: 12px;">
-          <div style="display: flex; justify-content: space-between; font-weight: bold;">
-            <span>${edu.degree}</span>
-            <span>${formatDate(edu.startDate)} - ${formatDate(edu.endDate)}</span>
-          </div>
-          <div style="font-style: italic;">${edu.institution}</div>
-          ${edu.achievements ? `
-            <div style="margin-top: 4px;">${edu.achievements}</div>
-          ` : ''}
-        </div>
-      `).join('')}
-    `;
-    container.appendChild(eduSection);
-  }
-
-  return container;
-};
-
-export const generatePDF = async (profile, type = 'resume') => {
+export const generatePDF = async (profile, fileName = 'resume.pdf', profileId) => {
+  lastGeneratedFileName = fileName;
   try {
-    const resumeHTML = createResumeHTML(profile);
-    document.body.appendChild(resumeHTML);
-
-    const canvas = await html2canvas(resumeHTML, {
-      scale: 2,
-      useCORS: true,
-      logging: false
-    });
-
-    document.body.removeChild(resumeHTML);
-
-    const imgData = canvas.toDataURL('image/jpeg', 1.0);
     const pdf = new jsPDF({
-      unit: 'px',
-      format: 'letter'
+      unit: 'pt',
+      format: 'letter',
+      orientation: 'portrait'
     });
 
-    const pdfWidth = pdf.internal.pageSize.getWidth();
-    const pdfHeight = pdf.internal.pageSize.getHeight();
-    const imgWidth = canvas.width;
-    const imgHeight = canvas.height;
-    const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+    // Set default font and margins
+    pdf.setFont('helvetica');
+    const margin = 50;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const usableWidth = pageWidth - (2 * margin);
+    let yPos = margin;
 
-    pdf.addImage(imgData, 'JPEG', 0, 0, imgWidth * ratio, imgHeight * ratio);
-    return pdf;
+    // Helper functions
+    const addSectionHeader = (title) => {
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      const textWidth = pdf.getTextWidth(title);
+      pdf.line(margin, yPos + 5, pageWidth - margin, yPos + 5);
+      pdf.text(title, margin, yPos);
+      yPos += 25;
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+    };
+
+    const checkNewPage = () => {
+      if (yPos > pdf.internal.pageSize.getHeight() - margin) {
+        pdf.addPage();
+        yPos = margin;
+      }
+    };
+
+    // Personal Information
+    if (profile.personal) {
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(profile.personal.fullName || '', pageWidth / 2, yPos, { align: 'center' });
+      
+      yPos += 20;
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      const contactInfo = [
+        profile.personal.email,
+        profile.personal.phone,
+        profile.personal.website,
+        profile.personal.linkedin,
+        profile.personal.location
+      ].filter(Boolean).join(' • ');
+      
+      const contactLines = pdf.splitTextToSize(contactInfo, usableWidth);
+      pdf.text(contactLines, pageWidth / 2, yPos, { align: 'center' });
+      yPos += (contactLines.length * 12) + 20;
+
+      if (profile.personal.summary) {
+        const summaryLines = pdf.splitTextToSize(profile.personal.summary, usableWidth);
+        pdf.text(summaryLines, margin, yPos);
+        yPos += (summaryLines.length * 12) + 20;
+      }
+    }
+
+    // Skills
+    if (profile.skills?.length) {
+      checkNewPage();
+      addSectionHeader('Skills');
+      const skillsText = profile.skills.join(' • ');
+      const lines = pdf.splitTextToSize(skillsText, usableWidth);
+      pdf.text(lines, margin, yPos);
+      yPos += (lines.length * 12) + 20;
+    }
+
+    // Experience
+    if (profile.experience?.length) {
+      checkNewPage();
+      addSectionHeader('Experience');
+      profile.experience.forEach(exp => {
+        checkNewPage();
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(exp.company || '', margin, yPos);
+        const dateText = `${formatDate(exp.startDate)} - ${exp.endDate ? formatDate(exp.endDate) : 'Present'}`;
+        pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
+        
+        yPos += 15;
+        pdf.setFont('helvetica', 'italic');
+        const titleLocation = `${exp.jobTitle}${exp.location ? ` - ${exp.location}` : ''}`;
+        pdf.text(titleLocation, margin, yPos);
+        yPos += 15;
+
+        if (exp.responsibilities) {
+          pdf.setFont('helvetica', 'normal');
+          const bullets = exp.responsibilities.split('\n').filter(r => r.trim());
+          bullets.forEach(bullet => {
+            checkNewPage();
+            const bulletText = `• ${bullet}`;
+            const lines = pdf.splitTextToSize(bulletText, usableWidth - 10);
+            pdf.text(lines, margin + 10, yPos);
+            yPos += (lines.length * 12);
+          });
+        }
+        yPos += 15;
+      });
+    }
+
+    // Education
+    if (profile.education?.length) {
+      checkNewPage();
+      addSectionHeader('Education');
+      profile.education.forEach(edu => {
+        checkNewPage();
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(edu.school || '', margin, yPos);
+        const dateText = `${formatDate(edu.startDate)} - ${edu.endDate ? formatDate(edu.endDate) : 'Present'}`;
+        pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
+        
+        yPos += 15;
+        if (edu.degree || edu.field) {
+          pdf.setFont('helvetica', 'italic');
+          const degreeField = [edu.degree, edu.field].filter(Boolean).join(' - ');
+          pdf.text(degreeField, margin, yPos);
+          yPos += 15;
+        }
+
+        if (edu.achievements) {
+          pdf.setFont('helvetica', 'normal');
+          const lines = pdf.splitTextToSize(edu.achievements, usableWidth);
+          pdf.text(lines, margin, yPos);
+          yPos += (lines.length * 12);
+        }
+        yPos += 15;
+      });
+    }
+
+    // Projects
+    if (profile.projects?.length) {
+      checkNewPage();
+      addSectionHeader('Projects');
+      profile.projects.forEach(proj => {
+        checkNewPage();
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(proj.name || '', margin, yPos);
+        if (proj.startDate) {
+          const dateText = `${formatDate(proj.startDate)} - ${proj.endDate ? formatDate(proj.endDate) : 'Present'}`;
+          pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
+        }
+        yPos += 15;
+
+        if (proj.description) {
+          pdf.setFont('helvetica', 'normal');
+          const lines = pdf.splitTextToSize(proj.description, usableWidth);
+          pdf.text(lines, margin, yPos);
+          yPos += (lines.length * 12) + 15;
+        }
+      });
+    }
+
+    // Achievements
+    if (profile.achievements?.length) {
+      checkNewPage();
+      addSectionHeader('Achievements');
+      profile.achievements.forEach(ach => {
+        checkNewPage();
+        if (ach.name) {
+          pdf.setFont('helvetica', 'bold');
+          const achievementHeader = `${ach.name}${ach.issuer ? ` from ${ach.issuer}` : ''}${ach.awardedDate ? ` (${ach.awardedDate})` : ''}`;
+          const lines = pdf.splitTextToSize(achievementHeader, usableWidth);
+          pdf.text(lines, margin, yPos);
+          yPos += (lines.length * 12);
+        }
+
+        if (ach.description) {
+          pdf.setFont('helvetica', 'normal');
+          const lines = pdf.splitTextToSize(ach.description, usableWidth);
+          pdf.text(lines, margin, yPos);
+          yPos += (lines.length * 12) + 10;
+        }
+      });
+    }
+
+    // Store PDF in localStorage with profile-specific keys
+    const pdfData = pdf.output('dataurlstring');
+    localStorage.setItem(`generatedPDF_${profile.id || profileId}`, pdfData);
+    localStorage.setItem(`pdfTimestamp_${profile.id || profileId}`, new Date().toISOString());
+    localStorage.setItem(`pdfFileName_${profile.id || profileId}`, fileName);
+
+    return true;
   } catch (error) {
     console.error('Error generating PDF:', error);
-    return null;
+    return false;
   }
 };
 
-export const showResumePreview = (profile) => {
-  const previewContainer = createResumeHTML(profile);
-  return previewContainer;
+export const downloadStoredPDF = (profileId) => {
+  const pdfData = localStorage.getItem(`generatedPDF_${profileId}`);
+  const fileName = localStorage.getItem(`pdfFileName_${profileId}`);
+  
+  if (!pdfData) return false;
+
+  const link = document.createElement('a');
+  link.href = pdfData;
+  link.download = fileName || 'resume.pdf';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  return true;
 };

@@ -11,8 +11,9 @@ import {
 import { showFloatingPage } from '../autofill/AutoFill';
 import { authService } from '../../services/authService';
 import { formatDateTime, formatDate, getCurrentISOString } from '../common/dateUtils';
-import { generatePDF } from '../common/pdfUtils';
-import { showResumePreview } from '../common/pdfUtils';
+import { generatePDF, downloadStoredPDF } from '../common/pdfUtils';
+import { LoadingButton } from '../common/LoadingButton';
+import moment from 'moment';
 
 const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -177,8 +178,9 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
       return isEditing ? (
         <textarea
           value={data || ''}
-          onChange={(e) => onEdit({
-            value: e.target.value
+          onChange={(e) => onEdit(section, {
+            value: e.target.value,
+            key: section
           })}
           className={title === LABELS.sections.coverLetter ? 'cover-letter-textarea' : 'normal-textarea'}
           ref={(element) => {
@@ -239,13 +241,22 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
 
 const Resume = () => {
   const [profile, setProfile] = useState(DEFAULT_PROFILE_STRUCTURE);
+  const [pdfGenerated, setPdfGenerated] = useState(false);
+  // Add new state to track current profile's PDF status
+  useEffect(() => {
+    // Check if current profile has generated PDF
+    const profileId = profile.id;
+    const pdfData = localStorage.getItem(`generatedPDF_${profileId}`);
+    setPdfGenerated(!!pdfData);
+  }, [profile]);
+
   const [editingSections, setEditingSections] = useState(new Set());
-
-  // Remove the global isEditing state
-  // const [isEditing, setIsEditing] = useState(false);
-
   const [floatingInstance, setFloatingInstance] = useState(null);
   const previewRef = useRef(null);
+
+  // Remove duplicate declarations
+  // const [floatingInstance, setFloatingInstance] = useState(null);
+  // const previewRef = useRef(null);
 
   // Update effect to load saved profile and listen for changes
   useEffect(() => {
@@ -369,14 +380,11 @@ const Resume = () => {
         const newArray = [...currentValue];
 
         if (updates.action === 'delete') {
-          // Remove item at specified index
           newArray.splice(updates.index, 1);
         } else if (updates.action === 'add') {
-          // Add new item with default structure from DEFAULT_PROFILE_STRUCTURE
           const defaultItem = DEFAULT_PROFILE_STRUCTURE[section][0];
           newArray.push({ ...defaultItem });
         } else if (updates.key) {
-          // Update existing item
           newArray[updates.index] = {
             ...newArray[updates.index],
             [updates.key]: updates.value
@@ -387,13 +395,22 @@ const Resume = () => {
           ...prevProfile,
           [section]: newArray
         };
+      } else if (typeof currentValue === 'object' && currentValue !== null) {
+        // Handle object sections (like personal information)
+        return {
+          ...prevProfile,
+          [section]: {
+            ...currentValue,
+            [updates.key]: updates.value
+          }
+        };
+      } else {
+        // Handle primitive values
+        return {
+          ...prevProfile,
+          [section]: updates.value || currentValue
+        };
       }
-
-      // Handle non-array data (objects and primitives)
-      return {
-        ...prevProfile,
-        [section]: updates.value || currentValue
-      };
     });
   };
 
@@ -420,26 +437,39 @@ const Resume = () => {
     }));
   };
 
-  const handleDownloadPDF = () => {
+  const handlePreviewResume = async () => {
     try {
-      console.log('Starting PDF generation with profile:', profile);
-      const doc = generatePDF(profile, 'resume');
-      console.log('PDF generation result:', doc);
-
-      if (!doc) {
-        console.error('PDF generation failed - no document returned');
-        return;
+      await generatePDF(profile);
+      if (previewRef.current) {
+        previewRef.current.innerHTML = showResumePreview();
       }
-
-      console.log('Saving PDF...');
-      doc.save(`${profile.personal?.name || 'resume'}.pdf`);
-      console.log('PDF saved successfully');
     } catch (error) {
-      console.error('Error generating PDF:', error.message);
-      console.error('Error stack:', error.stack);
+      console.error('Error generating preview:', error);
     }
   };
 
+  const handleGeneratePDF = async () => {
+    setPdfGenerated(false);
+    const fileName = `${profile.personal?.fullName || 'Resume'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}.pdf`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+
+    const success = await generatePDF(profile, fileName, profile.id);
+    setPdfGenerated(success);
+    return success;
+  };
+
+  const handleDownloadPDF = (e) => {
+    e.preventDefault();
+    downloadStoredPDF(profile.id); // Pass profile.id to downloadStoredPDF
+  };
+
+  // Add useEffect to load preview on mount and profile changes
+  useEffect(() => {
+    if (previewRef.current) {
+      previewRef.current.innerHTML = showResumePreview();
+    }
+  }, [profile]);
+
+  // Update the buttons grid to include preview button
   return (
     <article className="resume-display">
       <div className='grid'>
@@ -457,14 +487,34 @@ const Resume = () => {
           onSave={handleSectionSave}
         />
       ))}
-      <div className='grid'>
-        <button onClick={handleDownloadPDF}>Download PDF Resume</button>
+      <div className='grid-vertical'>
+        <LoadingButton
+          onClick={handleGeneratePDF}
+          className="primary-button"
+          loadingText="Generating PDF..."
+        >
+          Generate PDF Resume
+        </LoadingButton>
+
+        {pdfGenerated && (
+          <>
+            <small className="text-center text-muted">
+              {localStorage.getItem(`pdfFileName_${profile.id}`) || 'resume.pdf'}
+            </small>
+            <a
+              href="#"
+              onClick={handleDownloadPDF}
+              className="download-link"
+            >
+              Download PDF Resume
+            </a>
+          </>
+        )}
       </div>
+
       <div className='grid'>
         <button>Download PDF Cover Letter</button>
       </div>
-
-      <div ref={previewRef} className="resume-preview-container" />
     </article>
   );
 };
