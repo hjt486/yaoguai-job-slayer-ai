@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DEFAULT_PROFILE_STRUCTURE, LABELS, TEXTAREA_FIELDS, DATE_TIME_FIELDS, DATE_FIELDS, NOT_EDITABLE_FIELDS } from '../common/Constants';
+import {
+  DEFAULT_PROFILE_STRUCTURE,
+  LABELS,
+  TEXTAREA_FIELDS,
+  DATE_TIME_FIELDS,
+  DATE_FIELDS,
+  NOT_EDITABLE_FIELDS,
+  ARRAY_SECTIONS
+} from '../common/Constants';
 import { showFloatingPage } from '../autofill/AutoFill';
 import { authService } from '../../services/authService';
 import { formatDateTime, formatDate, getCurrentISOString } from '../common/dateUtils';
@@ -103,6 +111,15 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
 
       return data.map((item, index) => (
         <div key={index} className="section-item">
+          {isEditing && (
+            <button
+              className="button-small delete-button"
+              onClick={() => onEdit(section, { action: 'delete', index })}
+              style={{ float: 'right' }}
+            >
+              ×
+            </button>
+          )}
           {Object.entries(item).map(([key, value]) => (
             <div key={key} className="field-item">
               <strong>{LABELS.fields[key] || key}: </strong>
@@ -115,6 +132,14 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
               )}
             </div>
           ))}
+          {index === data.length - 1 && isEditing && ARRAY_SECTIONS.includes(section) && (
+            <button
+              className="button-small add-button"
+              onClick={() => onEdit(section, { action: 'add' })}
+            >
+              Add {title}
+            </button>
+          )}
         </div>
       ));
     } else if (typeof data === 'object' && data !== null) {
@@ -170,16 +195,26 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
     <section className="resume-section">
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>{title}</h3>
-        <button 
-          className="outline secondary button-small"
-          onClick={isEditing ? handleSave : handleEdit}
+        {!isEditing && (<button
+          className="outline button-small"
+          onClick={handleEdit}
         >
-          {isEditing ? LABELS.actions.save : LABELS.actions.edit}
-        </button>
+          {LABELS.actions.edit}
+        </button>)}
       </div>
       <div className="section-content">
         {renderContent()}
       </div>
+      {isEditing && (
+        <div className="section-footer" style={{ width: '100%' }}>
+          <button
+            className="button-full button-small"
+            onClick={handleSave}
+          >
+            {LABELS.actions.save}
+          </button>
+        </div>
+      )}
     </section>
   );
 };
@@ -187,7 +222,7 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
 const Resume = () => {
   const [profile, setProfile] = useState(DEFAULT_PROFILE_STRUCTURE);
   const [editingSections, setEditingSections] = useState(new Set());
-  
+
   // Remove the global isEditing state
   // const [isEditing, setIsEditing] = useState(false);
 
@@ -286,56 +321,53 @@ const Resume = () => {
   };
 
   const handleSectionEdit = (section, updates) => {
-      // console.log('Editing section:', updates, 'for section:', section); // Debug log
-    
-      setProfile(prevProfile => {
-        const currentValue = prevProfile[section];
-  
-        // Handle array sections (skills, education, experience)
-        if (Array.isArray(currentValue)) {
-          if (section === 'skills') {
-            const newSkills = [...currentValue];
-            if (updates && updates.key === 'skill') {
-              newSkills[updates.index] = updates.value;
-            }
-            return {
-              ...prevProfile,
-              [section]: newSkills
-            };
-          }
-  
-          // Handle other array sections (education, experience)
-          const newArray = [...currentValue];
-          if (updates && updates.index !== undefined && updates.key) {
-            newArray[updates.index] = {
-              ...newArray[updates.index],
-              [updates.key]: updates.value
-            };
+    setProfile(prevProfile => {
+      const currentValue = prevProfile[section];
+
+      if (Array.isArray(currentValue)) {
+        if (section === 'skills') {
+          const newSkills = [...currentValue];
+          if (updates && updates.key === 'skill') {
+            newSkills[updates.index] = updates.value;
           }
           return {
             ...prevProfile,
-            [section]: newArray
+            [section]: newSkills
           };
         }
-  
-        // Handle object sections (personal, metadata)
-        if (typeof currentValue === 'object' && currentValue !== null) {
-          return {
-            ...prevProfile,
-            [section]: {
-              ...currentValue,
-              [updates.key]: updates.value
-            }
+
+        // Handle other array sections (education, experience)
+        const newArray = [...currentValue];
+        if (updates && updates.index !== undefined && updates.key) {
+          newArray[updates.index] = {
+            ...newArray[updates.index],
+            [updates.key]: updates.value
           };
         }
-  
-        // Handle primitive values (coverLetter)
         return {
           ...prevProfile,
-          [section]: updates.value || currentValue
+          [section]: newArray
         };
-      });
-    };
+      }
+
+      // Handle object sections (personal, metadata)
+      if (typeof currentValue === 'object' && currentValue !== null) {
+        return {
+          ...prevProfile,
+          [section]: {
+            ...currentValue,
+            [updates.key]: updates.value
+          }
+        };
+      }
+
+      // Handle primitive values (coverLetter)
+      return {
+        ...prevProfile,
+        [section]: updates.value || currentValue
+      };
+    });
+  };
 
   const handleSectionSave = () => {
     // Save to localStorage
@@ -365,12 +397,12 @@ const Resume = () => {
       console.log('Starting PDF generation with profile:', profile);
       const doc = generatePDF(profile, 'resume');
       console.log('PDF generation result:', doc);
-      
+
       if (!doc) {
         console.error('PDF generation failed - no document returned');
         return;
       }
-      
+
       console.log('Saving PDF...');
       doc.save(`${profile.personal?.name || 'resume'}.pdf`);
       console.log('PDF saved successfully');

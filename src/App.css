@@ -182,7 +182,6 @@ nav {
   min-width: 25px !important;
   height: auto !important;
   line-height: 1 !important;
-  background: var(--secondary-hover);
 }
 
 .button-full span {
@@ -212,6 +211,9 @@ nav {
   line-height: 1.1;
   display: flex;
   font-size: var(--font-size-small);
+  align-items: baseline;
+  position: relative;
+  padding-right: 30px; /* Make space for delete button */
 }
 
 .resume-display .field-item strong {
@@ -259,6 +261,32 @@ nav {
   line-height: 1.2;
   margin: 0;
   padding: 0.75em;
+}
+
+.resume-display .section-item {
+  position: relative;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.resume-display .section-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.delete-button {
+  position: absolute ;
+  right: 0 ;
+  top: 2% !;
+  background-color: var(--pico-secondary-hover-background);
+  margin: 0 !important;
+}
+
+.add-button {
+  padding: 1em;
+  margin-top: 1em !important;
+  background-color: var(--pico-secondary-hover-background);
 }
 /* Resume display specific styling ends */
 

@@ -22,15 +22,15 @@ export const DEFAULT_PROFILE_STRUCTURE = {
     fullName: "",
     email: "",
     phone: "",
-    location: "",
     website: "",
     linkedin: "",
+    location: "",
     summary: ""
   },
   education: [
     {
-      degree: "",
       school: "",
+      degree: "",
       field: "",
       startDate: "",
       endDate: "",
@@ -130,6 +130,13 @@ export const LABELS = {
     description: "Description",
   }
 }
+
+export const ARRAY_SECTIONS = [
+  'education',
+  'experience',
+  'achievements',
+  'projects'
+];
 
 export const TEXTAREA_FIELDS = [
   'summary',
