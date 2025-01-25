@@ -46,7 +46,7 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
 
   const renderInput = (key, value, index) => {
     if (NOT_EDITABLE_FIELDS.includes(key)) {
-      return <small style={{ whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal' }}>
+      return <small className={shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal-wrap'}>
         {getFormattedDate(key, value)}
       </small>;
     }
@@ -60,13 +60,7 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
             value: e.target.value,
             index
           })}
-          style={{
-            width: '100%',
-            minHeight: '2.5em',
-            height: 'auto',
-            overflow: 'hidden',
-            resize: 'none'
-          }}
+          className="auto-resize-textarea"
           ref={(element) => {
             if (element) {
               element.style.height = 'auto';
@@ -136,9 +130,8 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
             <div key={index} className="section-item">
               {isEditing && (
                 <button
-                  className="button-small delete-button"
+                  className="button-small delete-button section-delete"
                   onClick={() => onEdit(section, { action: 'delete', index })}
-                  style={{ float: 'right' }}
                 >
                   ×
                 </button>
@@ -187,13 +180,7 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
           onChange={(e) => onEdit({
             value: e.target.value
           })}
-          style={{
-            width: '100%',
-            minHeight: title === LABELS.sections.coverLetter ? '400px' : '100px',
-            height: 'auto',
-            overflow: 'hidden',
-            resize: 'none'
-          }}
+          className={title === LABELS.sections.coverLetter ? 'cover-letter-textarea' : 'normal-textarea'}
           ref={(element) => {
             if (element) {
               element.style.height = 'auto';
@@ -202,7 +189,7 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
           }}
         />
       ) : (
-        <p style={{ whiteSpace: 'pre-wrap' }}>{data}</p>
+        <p className="pre-wrap">{data}</p>
       );
     }
   };
@@ -214,20 +201,22 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
 
   return (
     <section className="resume-section">
-      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="section-header">
         <h3>{title}</h3>
-        {!isEditing && (<button
-          className="outline button-small"
-          onClick={handleEdit}
-        >
-          {LABELS.actions.edit}
-        </button>)}
+        {!isEditing && (
+          <button
+            className="outline button-small"
+            onClick={handleEdit}
+          >
+            {LABELS.actions.edit}
+          </button>
+        )}
       </div>
       <div className="section-content">
         {renderContent()}
       </div>
       {isEditing && (
-        <div className="section-footer" style={{ width: '100%' }}>
+        <div className="section-footer">
           <div role="group">
             <button
               className="button-full button-small"
@@ -475,13 +464,7 @@ const Resume = () => {
         <button>Download PDF Cover Letter</button>
       </div>
 
-      <div ref={previewRef} className="resume-preview-container" style={{
-        width: '100%',
-        overflow: 'auto',
-        marginTop: '2rem',
-        padding: '1rem',
-        backgroundColor: '#f5f5f5'
-      }} />
+      <div ref={previewRef} className="resume-preview-container" />
     </article>
   );
 };
