@@ -470,7 +470,8 @@ const Resume = () => {
 
     const success = await generatePDF(profile, fileName, profile.id, true);
     if (success) {
-      localStorage.setItem(`generatedPDF_${profile.id}_coverLetter`, fileName);
+      // Store cover letter filename separately from resume filename
+      localStorage.setItem(`coverLetterFileName_${profile.id}`, fileName);
       setCoverLetterGenerated(true);
     }
     return success;
@@ -533,7 +534,7 @@ const Resume = () => {
           {coverLetterGenerated && (
             <>
               <small className="text-center text-muted">
-                {localStorage.getItem(`generatedPDF_${profile.id}_coverLetter`)}
+                {localStorage.getItem(`coverLetterFileName_${profile.id}`)}
               </small>
               <a
                 href="#"

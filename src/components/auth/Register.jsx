@@ -28,14 +28,15 @@ const Register = ({ onRegister, onToggleForm }) => {
 
     try {
       const { confirmPassword, ...registrationData } = formData;
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      // Add artificial delay to simulate registration
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await onRegister(registrationData);
       setShowSuccessModal(true);
       return true;
     } catch (error) {
       setErrors({ submit: error.message });
       console.error('Registration failed:', error);
-      return false; // Changed from throw error to return false
+      return false;
     }
   };
 
@@ -214,7 +215,6 @@ const Register = ({ onRegister, onToggleForm }) => {
             <LoadingButton
               onClick={handleSubmit}
               loadingText="Registering..."
-              timeout={5000}
             >
               Register
             </LoadingButton>

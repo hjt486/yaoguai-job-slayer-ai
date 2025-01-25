@@ -127,8 +127,23 @@ const Profiles = () => {
     const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
 
     if (storedProfiles[currentUser.id]) {
+      // Remove profile from userProfiles
       delete storedProfiles[currentUser.id][id];
       localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+
+      // Remove associated PDF files and filenames
+      localStorage.removeItem(`generatedPDF_${id}`);
+      localStorage.removeItem(`generatedPDFFileName_${id}`);
+      localStorage.removeItem(`coverLetter_${id}`);
+      localStorage.removeItem(`coverLetterFileName_${id}`);
+
+      // If the deleted profile was the current profile, clear currentProfile
+      const currentProfile = JSON.parse(localStorage.getItem('currentProfile'));
+      if (currentProfile && currentProfile.id === id) {
+        localStorage.removeItem('currentProfile');
+        setCurrentProfileId(null);
+      }
+
       loadProfiles();
     }
   };

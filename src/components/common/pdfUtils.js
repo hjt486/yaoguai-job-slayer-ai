@@ -2,7 +2,7 @@ import { jsPDF } from 'jspdf';
 import { formatDate } from './dateUtils';
 import moment from 'moment';
 
-export const generatePDF = async (profile, fileName = 'resume.pdf', profileId, isCoverLetter = false) => {
+export const generatePDF = async (profile, fileName, profileId, isCoverLetter = false) => {
   try {
     const pdf = new jsPDF({
       unit: 'pt',
@@ -105,7 +105,7 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId, i
       }
 
       // Skills
-      if (profile.skills?.length) {
+      if (profile.skills?.length > 0) {
         checkNewPage();
         addSectionHeader('Skills');
         const skillsText = profile.skills.join(' • ');
@@ -115,10 +115,11 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId, i
       }
 
       // Experience
-      if (profile.experience?.length) {
+      if (profile.experience?.length > 0 && profile.experience.some(exp => exp.company || exp.jobTitle)) {
         checkNewPage();
         addSectionHeader('Experience');
         profile.experience.forEach(exp => {
+          if (!exp.company && !exp.jobTitle) return; // Skip empty entries
           checkNewPage();
           pdf.setFont('helvetica', 'bold');
           pdf.text(exp.company || '', margin, yPos);
@@ -147,10 +148,11 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId, i
       }
 
       // Education
-      if (profile.education?.length) {
+      if (profile.education?.length > 0 && profile.education.some(edu => edu.school || edu.degree)) {
         checkNewPage();
         addSectionHeader('Education');
         profile.education.forEach(edu => {
+          if (!edu.school && !edu.degree) return; // Skip empty entries
           checkNewPage();
           pdf.setFont('helvetica', 'bold');
           pdf.text(edu.school || '', margin, yPos);
@@ -176,10 +178,11 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId, i
       }
 
       // Projects
-      if (profile.projects?.length) {
+      if (profile.projects?.length > 0 && profile.projects.some(proj => proj.name || proj.description)) {
         checkNewPage();
         addSectionHeader('Projects');
         profile.projects.forEach(proj => {
+          if (!proj.name && !proj.description) return; // Skip empty entries
           checkNewPage();
           pdf.setFont('helvetica', 'bold');
           pdf.text(proj.name || '', margin, yPos);
@@ -199,10 +202,11 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId, i
       }
 
       // Achievements
-      if (profile.achievements?.length) {
+      if (profile.achievements?.length > 0 && profile.achievements.some(ach => ach.name || ach.description)) {
         checkNewPage();
         addSectionHeader('Achievements');
         profile.achievements.forEach(ach => {
+          if (!ach.name && !ach.description) return; // Skip empty entries
           checkNewPage();
           if (ach.name) {
             pdf.setFont('helvetica', 'bold');
@@ -235,6 +239,15 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId, i
     localStorage.setItem(`pdfTimestamp_${profile.id || profileId}`, new Date().toISOString());
     localStorage.setItem(`pdfFileName_${profile.id || profileId}`, fileName);
 
+    // Store PDF data and filename separately
+    const pdfKey = isCoverLetter ? `coverLetter_${profileId}` : `generatedPDF_${profileId}`;
+    const fileNameKey = isCoverLetter ? `coverLetterFileName_${profileId}` : `pdfFileName_${profileId}`;
+
+    // Store the base64 PDF data
+    localStorage.setItem(pdfKey, pdfData);
+    // Store the filename separately
+    localStorage.setItem(fileNameKey, fileName);
+
     return true;
   } catch (error) {
     console.error('Error generating PDF:', error);
@@ -243,15 +256,17 @@ export const generatePDF = async (profile, fileName = 'resume.pdf', profileId, i
 };
 
 export const downloadStoredPDF = (profileId, isCoverLetter = false) => {
-  const key = isCoverLetter ? `generatedPDF_${profileId}_coverLetter` : `generatedPDF_${profileId}`;
-  const pdfData = localStorage.getItem(key);
-  const fileName = localStorage.getItem(key);
+  const pdfKey = isCoverLetter ? `coverLetter_${profileId}` : `generatedPDF_${profileId}`;
+  const fileNameKey = isCoverLetter ? `coverLetterFileName_${profileId}` : `pdfFileName_${profileId}`;
 
-  if (!pdfData) return false;
+  const pdfData = localStorage.getItem(pdfKey);
+  const fileName = localStorage.getItem(fileNameKey);
+
+  if (!pdfData || !fileName) return false;
 
   const link = document.createElement('a');
   link.href = pdfData;
-  link.download = fileName || (isCoverLetter ? 'cover_letter.pdf' : 'resume.pdf');
+  link.download = fileName;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
