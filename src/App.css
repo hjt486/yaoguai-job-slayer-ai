@@ -126,7 +126,7 @@ h3 {
 }
 
 h4 {
-  font-size: 1.5rem; /* Custom font size for h4 */
+  font-size: 0.5rem; /* Custom font size for h4 */
 }
 
 h5 {
@@ -188,6 +188,89 @@ nav {
 .profile-grid {
   margin-bottom: 0.25em;
 }
+
+/* Resume display specific styling starts */
+.resume-display .field-item {
+  margin: 0;
+  padding: 0;
+  line-height: 1.1;
+  display: flex;
+  font-size: 0.8333em;
+}
+
+.resume-display .field-item strong {
+  min-width: 100px;
+  max-width: 100px;
+  flex-shrink: 0;
+}
+
+.resume-display .field-item span {
+  flex: 1;
+}
+
+.resume-display .skills-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  margin: 0;
+  padding: 0;
+}
+
+.resume-display .skill-item {
+  margin: 0;
+  padding: 0;
+}
+
+.resume-display .skill-item span {
+  font-size: 0.8333em;
+  padding: 0.2em 0.4em;
+  background-color: var(--secondary-hover);
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.resume-display .section-item {
+  margin-bottom: 0;
+  padding-bottom: 0.5em;
+}
+
+.resume-display .section-item:last-child {
+  border-bottom: none;
+}
+
+.resume-display .subsection {
+  margin: 0;
+}
+
+.resume-display .subsection h3 {
+  margin-bottom: 0em;
+  color: var(--primary);
+}
+
+.resume-display .resume-section {
+  margin-bottom: 0em;
+}
+
+.resume-display .section-header h2 {
+  margin-bottom: 0em;
+  padding-bottom: 0em;
+}
+
+.resume-display p {
+  font-size: 0.8333em;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+}
+
+.resume-display textarea {
+  font-size: 0.8333em;
+  line-height: 1.2;
+  margin: 0;
+  padding: 0.3em;
+}
+/* Resume display specific styling ends */
 
 /* ====================================================================== */
 /* Floating Auto Fill Page Style Begins */

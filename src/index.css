@@ -12,3 +12,14 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+.skills-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  align-items: center;
+}
+
+.skill-item {
+  display: inline-flex;
+}
