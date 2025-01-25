@@ -16,6 +16,17 @@ import { showResumePreview } from '../common/pdfUtils';
 
 const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
+  const [originalData, setOriginalData] = useState(null);
+
+  const handleEdit = () => {
+    setOriginalData(JSON.parse(JSON.stringify(data))); // Deep copy of current data
+    setIsEditing(true);
+  };
+
+  const handleCancel = () => {
+    onEdit(section, { action: 'restore', value: originalData });
+    setIsEditing(false);
+  };
 
   const shouldUseTextarea = (key, value) => {
     return TEXTAREA_FIELDS.some(field => key.toLowerCase().includes(field)) ||
@@ -84,11 +95,19 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
           <div className="skills-grid">
             {data.map((skill, index) => (
               <div key={index} className="skill-item">
+                {isEditing && (
+                  <button
+                    className="button-small delete-button"
+                    onClick={() => onEdit(section, { action: 'delete', index })}
+                  >
+                    ×
+                  </button>
+                )}
                 {isEditing ? (
                   <input
                     type="text"
                     value={skill || ''}
-                    onChange={(e) => onEdit({
+                    onChange={(e) => onEdit(section, {
                       key: 'skill',
                       value: e.target.value,
                       index
@@ -186,10 +205,6 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
     }
   };
 
-  const handleEdit = () => {
-    setIsEditing(true);
-  };
-
   const handleSave = () => {
     setIsEditing(false);
     onSave();
@@ -211,12 +226,20 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
       </div>
       {isEditing && (
         <div className="section-footer" style={{ width: '100%' }}>
-          <button
-            className="button-full button-small"
-            onClick={handleSave}
-          >
-            {LABELS.actions.save}
-          </button>
+          <div role="group">
+            <button
+              className="button-full button-small"
+              onClick={handleSave}
+            >
+              {LABELS.actions.save}
+            </button>
+            <button
+              className="button-small outline"
+              onClick={handleCancel}
+            >
+              {LABELS.actions.cancel}
+            </button>
+          </div>
         </div>
       )}
     </section>
@@ -326,6 +349,13 @@ const Resume = () => {
 
   const handleSectionEdit = (section, updates) => {
     setProfile(prevProfile => {
+      if (updates.action === 'restore') {
+        return {
+          ...prevProfile,
+          [section]: updates.value
+        };
+      }
+
       const currentValue = prevProfile[section];
 
       if (Array.isArray(currentValue)) {
@@ -340,32 +370,31 @@ const Resume = () => {
           };
         }
 
-        // Handle other array sections (education, experience)
+        // Handle array sections (education, experience, achievements, projects)
         const newArray = [...currentValue];
-        if (updates && updates.index !== undefined && updates.key) {
+
+        if (updates.action === 'delete') {
+          // Remove item at specified index
+          newArray.splice(updates.index, 1);
+        } else if (updates.action === 'add') {
+          // Add new item with default structure from DEFAULT_PROFILE_STRUCTURE
+          const defaultItem = DEFAULT_PROFILE_STRUCTURE[section][0];
+          newArray.push({ ...defaultItem });
+        } else if (updates.key) {
+          // Update existing item
           newArray[updates.index] = {
             ...newArray[updates.index],
             [updates.key]: updates.value
           };
         }
+
         return {
           ...prevProfile,
           [section]: newArray
         };
       }
 
-      // Handle object sections (personal, metadata)
-      if (typeof currentValue === 'object' && currentValue !== null) {
-        return {
-          ...prevProfile,
-          [section]: {
-            ...currentValue,
-            [updates.key]: updates.value
-          }
-        };
-      }
-
-      // Handle primitive values (coverLetter)
+      // Handle non-array data (objects and primitives)
       return {
         ...prevProfile,
         [section]: updates.value || currentValue
