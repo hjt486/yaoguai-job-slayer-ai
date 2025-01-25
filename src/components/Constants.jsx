@@ -70,6 +70,11 @@ export const LABELS = {
     achievements: "Achievements & Awards",
     coverLetter: "Cover Letter"
   },
+  actions: {
+    edit: "Edit",
+    save: "Save",
+    cancel: "Cancel"
+  },
   fields: {
     // Metadata fields
     profileName: "Profile Name",

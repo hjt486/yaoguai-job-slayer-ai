@@ -6,7 +6,9 @@ import { formatDateTime, formatDate, getCurrentISOString } from '../common/dateU
 import { generatePDF } from '../common/pdfUtils';
 import { showResumePreview } from '../common/pdfUtils';
 
-const ResumeSection = ({ title, data, isEditing, onEdit }) => {
+const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
+  const [isEditing, setIsEditing] = useState(false);
+
   const shouldUseTextarea = (key, value) => {
     return TEXTAREA_FIELDS.some(field => key.toLowerCase().includes(field)) ||
       (typeof value === 'string' && value.length > 100);
@@ -30,19 +32,15 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
       </small>;
     }
 
-    const handleChange = (newValue) => {
-      onEdit({
-        key,
-        value: newValue,
-        index: index !== undefined ? index : null
-      });
-    };
-
     if (shouldUseTextarea(key, value)) {
       return (
         <textarea
           value={value || ''}
-          onChange={(e) => handleChange(e.target.value)}
+          onChange={(e) => onEdit(section, {
+            key,
+            value: e.target.value,
+            index
+          })}
           style={{
             width: '100%',
             minHeight: '2.5em',
@@ -60,13 +58,15 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
       );
     }
 
-    return (
-      <input
-        type="text"
-        value={value || ''}
-        onChange={(e) => handleChange(e.target.value)}
-      />
-    );
+    return <input
+      type="text"
+      value={value || ''}
+      onChange={(e) => onEdit(section, {
+        key,
+        value: e.target.value,
+        index
+      })}
+    />;
   };
 
   const renderContent = () => {
@@ -81,9 +81,9 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
                     type="text"
                     value={skill || ''}
                     onChange={(e) => onEdit({
-                      key: 'skills',
-                      index: index,
-                      value: e.target.value
+                      key: 'skill',
+                      value: e.target.value,
+                      index
                     })}
                   />
                 ) : (
@@ -118,43 +118,25 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
         </div>
       ));
     } else if (typeof data === 'object' && data !== null) {
-      return Object.entries(data).map(([key, value]) => {
-        if (typeof value === 'object' && value !== null) {
-          return (
-            <div key={key} className="subsection">
-              <h4>{LABELS.fields[key] || key}</h4>
-              {Object.entries(value).map(([subKey, subValue]) => (
-                <div key={subKey} className="field-item">
-                  <strong>{LABELS.fields[subKey] || subKey}: </strong>
-                  {isEditing ? (
-                    renderInput(subKey, subValue)
-                  ) : (
-                    <span style={{ whiteSpace: shouldUseTextarea(subKey, subValue) ? 'pre-wrap' : 'normal' }}>
-                      {getFormattedDate(subKey, subValue)}
-                    </span>
-                  )}
-                </div>
-              ))}
-            </div>
-          );
-        }
-        return (
-          <div key={key} className="field-item">
-            <strong>{LABELS.fields[key] || key}: </strong>
-            {isEditing ? (
-              renderInput(key, value)
-            ) : (
-              <span style={{ whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal' }}>
-                {getFormattedDate(key, value)}
-              </span>
-            )}
-          </div>
-        );
-      });
+      return Object.entries(data).map(([key, value]) => (
+        <div key={key} className="field-item">
+          <strong>{LABELS.fields[key] || key}: </strong>
+          {isEditing ? (
+            renderInput(key, value)
+          ) : (
+            <span style={{ whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal' }}>
+              {getFormattedDate(key, value)}
+            </span>
+          )}
+        </div>
+      ));
     } else {
       return isEditing ? (
         <textarea
-          value={data}
+          value={data || ''}
+          onChange={(e) => onEdit({
+            value: e.target.value
+          })}
           style={{
             width: '100%',
             minHeight: title === LABELS.sections.coverLetter ? '400px' : '100px',
@@ -168,11 +150,6 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
               element.style.height = `${element.scrollHeight}px`;
             }
           }}
-          onChange={(e) => {
-            const element = e.target;
-            element.style.height = 'auto';
-            element.style.height = `${element.scrollHeight}px`;
-          }}
         />
       ) : (
         <p style={{ whiteSpace: 'pre-wrap' }}>{data}</p>
@@ -180,10 +157,26 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
     }
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+  };
+
+  const handleSave = () => {
+    setIsEditing(false);
+    onSave();
+  };
+
   return (
     <section className="resume-section">
-      <div className="section-header">
+      <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>{title}</h3>
+        <button 
+          className="outline secondary" 
+          onClick={isEditing ? handleSave : handleEdit}
+          style={{ marginLeft: '1rem' }}
+        >
+          {isEditing ? LABELS.actions.save : LABELS.actions.edit}
+        </button>
       </div>
       <div className="section-content">
         {renderContent()}
@@ -194,7 +187,11 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
 
 const Resume = () => {
   const [profile, setProfile] = useState(DEFAULT_PROFILE_STRUCTURE);
-  const [isEditing, setIsEditing] = useState(false);
+  const [editingSections, setEditingSections] = useState(new Set());
+  
+  // Remove the global isEditing state
+  // const [isEditing, setIsEditing] = useState(false);
+
   const [floatingInstance, setFloatingInstance] = useState(null);
   const previewRef = useRef(null);
 
@@ -290,55 +287,59 @@ const Resume = () => {
   };
 
   const handleSectionEdit = (section, updates) => {
-    setProfile(prevProfile => {
-      const currentValue = prevProfile[section];
-
-      if (Array.isArray(currentValue)) {
-        if (section === 'skills') {
-          const newSkills = [...currentValue];
-          if (updates.index !== undefined) {
-            newSkills[updates.index] = updates.value;
-          } else {
-            newSkills.push(updates.value);
+      console.log('Editing section:', updates, 'for section:', section); // Debug log
+    
+      setProfile(prevProfile => {
+        const currentValue = prevProfile[section];
+  
+        // Handle array sections (skills, education, experience)
+        if (Array.isArray(currentValue)) {
+          if (section === 'skills') {
+            const newSkills = [...currentValue];
+            if (updates && updates.key === 'skill') {
+              newSkills[updates.index] = updates.value;
+            }
+            return {
+              ...prevProfile,
+              [section]: newSkills
+            };
+          }
+  
+          // Handle other array sections (education, experience)
+          const newArray = [...currentValue];
+          if (updates && updates.index !== undefined && updates.key) {
+            newArray[updates.index] = {
+              ...newArray[updates.index],
+              [updates.key]: updates.value
+            };
           }
           return {
             ...prevProfile,
-            [section]: newSkills
+            [section]: newArray
           };
         }
-
-        const newArray = [...currentValue];
-        if (updates.index !== undefined) {
-          newArray[updates.index] = {
-            ...newArray[updates.index],
-            [updates.key]: updates.value
+  
+        // Handle object sections (personal, metadata)
+        if (typeof currentValue === 'object' && currentValue !== null) {
+          return {
+            ...prevProfile,
+            [section]: {
+              ...currentValue,
+              [updates.key]: updates.value
+            }
           };
         }
+  
+        // Handle primitive values (coverLetter)
         return {
           ...prevProfile,
-          [section]: newArray
+          [section]: updates.value || currentValue
         };
-      }
+      });
+    };
 
-      if (typeof currentValue === 'object' && currentValue !== null) {
-        return {
-          ...prevProfile,
-          [section]: {
-            ...currentValue,
-            [updates.key]: updates.value
-          }
-        };
-      }
-
-      return {
-        ...prevProfile,
-        [section]: updates.value
-      };
-    });
-  };
-
-  const handleSave = () => {
-    console.log('Saving profile:', profile);  // Debug log
+  const handleSectionSave = () => {
+    // Save to localStorage
     const updatedProfile = {
       ...profile,
       metadata: {
@@ -347,21 +348,17 @@ const Resume = () => {
       }
     };
 
-    // Save to localStorage with correct ID
     const currentUser = authService.getCurrentUser();
     const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
     storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
     storedProfiles[currentUser.id][profile.id] = updatedProfile;
 
-    console.log('Updated storage:', storedProfiles);  // Debug log
     localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
     localStorage.setItem('currentProfile', JSON.stringify(updatedProfile));
 
     window.dispatchEvent(new CustomEvent('profileUpdated', {
       detail: { profile: updatedProfile }
     }));
-
-    setIsEditing(false);
   };
 
   const handleDownloadPDF = () => {
@@ -369,12 +366,12 @@ const Resume = () => {
       console.log('Starting PDF generation with profile:', profile);
       const doc = generatePDF(profile, 'resume');
       console.log('PDF generation result:', doc);
-
+      
       if (!doc) {
         console.error('PDF generation failed - no document returned');
         return;
       }
-
+      
       console.log('Saving PDF...');
       doc.save(`${profile.personal?.name || 'resume'}.pdf`);
       console.log('PDF saved successfully');
@@ -384,35 +381,21 @@ const Resume = () => {
     }
   };
 
-  useEffect(() => {
-    if (previewRef.current) {
-      // Clear previous preview
-      previewRef.current.innerHTML = '';
-      // Add new preview
-      const previewElement = showResumePreview(profile);
-      previewRef.current.appendChild(previewElement);
-    }
-  }, [profile, isEditing]);
-
   return (
-    <article className={isEditing ? 'resume-edit' : 'resume-display'}>
+    <article className="resume-display">
       <div className='grid'>
         <button onClick={handleAutoFill}>
           {typeof chrome === 'undefined' ? 'Toggle Auto Fill' : 'Auto Fill'}
         </button>
       </div>
-      <div className='grid'>
-        <button onClick={() => isEditing ? handleSave() : setIsEditing(true)}>
-          {isEditing ? 'Save' : 'Edit'}
-        </button>
-      </div>
       {Object.entries(LABELS.sections).map(([section, label]) => (
         <ResumeSection
           key={section}
+          section={section}
           title={label}
           data={profile[section]}
-          isEditing={isEditing}
-          onEdit={(updates) => handleSectionEdit(section, updates)}
+          onEdit={handleSectionEdit}
+          onSave={handleSectionSave}
         />
       ))}
       <div className='grid'>
