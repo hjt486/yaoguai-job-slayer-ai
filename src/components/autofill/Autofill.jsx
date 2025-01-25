@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SITE_LOGO } from '../Constants';
+import { SITE_LOGO } from '../common/Constants';
 import * as ReactDOM from 'react-dom/client';
 
 // Import CSS as raw strings using Vite's ?raw suffix

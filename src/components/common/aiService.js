@@ -1,4 +1,4 @@
-import { AI_CONFIG, AI_PROMPTS } from '../Constants';
+import { AI_CONFIG, AI_PROMPTS } from './Constants';
 
 export const aiService = {
   async sendChatRequest(apiSettings, messages) {

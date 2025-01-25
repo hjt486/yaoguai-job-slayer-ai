@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { DEFAULT_PROFILE_STRUCTURE, LABELS, TEXTAREA_FIELDS, DATE_TIME_FIELDS, DATE_FIELDS, NOT_EDITABLE_FIELDS } from '../Constants';
+import { DEFAULT_PROFILE_STRUCTURE, LABELS, TEXTAREA_FIELDS, DATE_TIME_FIELDS, DATE_FIELDS, NOT_EDITABLE_FIELDS } from '../common/Constants';
 import { showFloatingPage } from '../autofill/AutoFill';
 import { authService } from '../../services/authService';
 import { formatDateTime, formatDate, getCurrentISOString } from '../common/dateUtils';

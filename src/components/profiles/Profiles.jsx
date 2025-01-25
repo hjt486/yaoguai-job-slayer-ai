@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { DEFAULT_PROFILE_STRUCTURE, AI_PROMPTS, AI_CONFIG } from '../Constants';
+import { DEFAULT_PROFILE_STRUCTURE, AI_PROMPTS, AI_CONFIG } from '../common/Constants';
 import { authService } from '../../services/authService';
 import { LoadingButton } from '../common/LoadingButton';
 import { parseDocument } from '../common/DocumentParser';

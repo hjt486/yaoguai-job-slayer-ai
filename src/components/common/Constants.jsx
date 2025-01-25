@@ -54,7 +54,15 @@ export const DEFAULT_PROFILE_STRUCTURE = {
       awardedDate: "",
       description: "",
       issuer: ""
-    }
+    },
+  ],
+  projects: [
+    {
+      name: "",
+      startDate: "",
+      endDate: "",
+      description: "",
+    },
   ],
   // Cover Letter Section
   coverLetter: ""
@@ -68,6 +76,7 @@ export const LABELS = {
     experience: "Professional Experience",
     skills: "Skills & Technologies",
     achievements: "Achievements & Awards",
+    projects: "Projects",
     coverLetter: "Cover Letter"
   },
   actions: {
@@ -112,7 +121,13 @@ export const LABELS = {
     name: "Achievement Name",
     awardedDate: "Date Awarded",
     description: "Description",
-    issuer: "Issuing Organization"
+    issuer: "Issuing Organization",
+
+    // Projects fields
+    name: "Project Name",
+    startDate: "Start Date",
+    endDate: "End Date",
+    description: "Description",
   }
 }
 
@@ -122,8 +137,6 @@ export const TEXTAREA_FIELDS = [
   'achievements',
   'description',
   'coverLetter',
-  'projectDescription',
-  'accomplishments'
 ];
 
 export const DATE_TIME_FIELDS = [

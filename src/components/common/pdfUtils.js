@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { LABELS } from '../Constants';
+import { LABELS } from './Constants';
 import { formatDate } from './dateUtils';
 
 const createResumeHTML = (profile) => {
