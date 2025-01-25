@@ -240,23 +240,25 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
 };
 
 const Resume = () => {
+  // Add new state for cover letter
   const [profile, setProfile] = useState(DEFAULT_PROFILE_STRUCTURE);
   const [pdfGenerated, setPdfGenerated] = useState(false);
-  // Add new state to track current profile's PDF status
+  const [coverLetterGenerated, setCoverLetterGenerated] = useState(false);
+
+  // Update effect to check both PDF statuses
+  // Update the useEffect that checks PDF status
   useEffect(() => {
-    // Check if current profile has generated PDF
     const profileId = profile.id;
     const pdfData = localStorage.getItem(`generatedPDF_${profileId}`);
+    const coverLetterData = localStorage.getItem(`generatedPDF_${profileId}_coverLetter`);
+    
     setPdfGenerated(!!pdfData);
+    setCoverLetterGenerated(!!coverLetterData);
   }, [profile]);
 
   const [editingSections, setEditingSections] = useState(new Set());
   const [floatingInstance, setFloatingInstance] = useState(null);
   const previewRef = useRef(null);
-
-  // Remove duplicate declarations
-  // const [floatingInstance, setFloatingInstance] = useState(null);
-  // const previewRef = useRef(null);
 
   // Update effect to load saved profile and listen for changes
   useEffect(() => {
@@ -452,17 +454,33 @@ const Resume = () => {
     setPdfGenerated(false);
     const fileName = `${profile.personal?.fullName || 'Resume'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_resume`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
 
-    const success = await generatePDF(profile, fileName, profile.id);
+    const success = await generatePDF(profile, fileName, profile.id, false);
     setPdfGenerated(success);
     return success;
   };
 
   const handleDownloadPDF = (e) => {
     e.preventDefault();
-    downloadStoredPDF(profile.id); // Pass profile.id to downloadStoredPDF
+    downloadStoredPDF(profile.id);
   };
 
-  // Add useEffect to load preview on mount and profile changes
+  const handleGenerateCoverLetter = async () => {
+    setCoverLetterGenerated(false);
+    const fileName = `${profile.personal?.fullName || 'Cover_Letter'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_cover_letter`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+
+    const success = await generatePDF(profile, fileName, profile.id, true);
+    if (success) {
+      localStorage.setItem(`generatedPDF_${profile.id}_coverLetter`, fileName);
+      setCoverLetterGenerated(true);
+    }
+    return success;
+  };
+
+  const handleDownloadCoverLetter = (e) => {
+    e.preventDefault();
+    downloadStoredPDF(profile.id, true);
+  };
+
   useEffect(() => {
     if (previewRef.current) {
       previewRef.current.innerHTML = showResumePreview();
@@ -477,16 +495,6 @@ const Resume = () => {
           {typeof chrome === 'undefined' ? 'Toggle Auto Fill' : 'Auto Fill'}
         </button>
       </div>
-      {Object.entries(LABELS.sections).map(([section, label]) => (
-        <ResumeSection
-          key={section}
-          section={section}
-          title={label}
-          data={profile[section]}
-          onEdit={handleSectionEdit}
-          onSave={handleSectionSave}
-        />
-      ))}
       <div className='grid-vertical'>
         <LoadingButton
           onClick={handleGeneratePDF}
@@ -512,9 +520,42 @@ const Resume = () => {
         )}
       </div>
 
-      <div className='grid'>
-        <button>Download PDF Cover Letter</button>
+      <div className='grid-vertical'>
+        <div className='grid-vertical'>
+          <LoadingButton
+            onClick={handleGenerateCoverLetter}
+            className="primary-button"
+            loadingText="Generating Cover Letter..."
+          >
+            Generate PDF Cover Letter
+          </LoadingButton>
+          
+          {coverLetterGenerated && (
+            <>
+              <small className="text-center text-muted">
+                {localStorage.getItem(`generatedPDF_${profile.id}_coverLetter`)}
+              </small>
+              <a
+                href="#"
+                onClick={handleDownloadCoverLetter}
+                className="download-link"
+              >
+                Download PDF Cover Letter
+              </a>
+            </>
+          )}
+        </div>
       </div>
+      {Object.entries(LABELS.sections).map(([section, label]) => (
+        <ResumeSection
+          key={section}
+          section={section}
+          title={label}
+          data={profile[section]}
+          onEdit={handleSectionEdit}
+          onSave={handleSectionSave}
+        />
+      ))}
     </article>
   );
 };
