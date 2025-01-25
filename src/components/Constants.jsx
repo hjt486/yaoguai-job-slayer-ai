@@ -60,6 +60,29 @@ export const DEFAULT_PROFILE_STRUCTURE = {
   coverLetter: ""
 }
 
+export const AI_CONFIG = {
+  SYSTEM_MESSAGE: {
+    role: "system",
+    content: "You are a helpful assistant that parses resumes accurately."
+  },
+  TEMPERATURE: 0.7,
+  MAX_CONTENT_LENGTH: 12000,
+  MAX_TOKENS: 4000
+};
+
+export const AI_PROMPTS = {
+  RESUME_PARSE: `Please analyze this resume and extract information to fill in below structure,
+  and return the data strictly following this JSON structure: ${JSON.stringify(DEFAULT_PROFILE_STRUCTURE, null, 2)}
+  
+  Please also generate and fill cover letter based on the resume, make sure that: 
+  Please write a cover letter based on my resume and the job description provided. 
+  The writing style should balance between formal academic writing and conversational expression. 
+  Ensure that every sentence has a clear subject. Avoid using long or complex sentences. 
+  Use short sentences as much as possible.
+
+  Lastly, Ensure all dates are in ISO format and all fields match exactly as specified.
+  `
+};
 export const LABELS = {
   sections: {
     metadata: "Profile Data",

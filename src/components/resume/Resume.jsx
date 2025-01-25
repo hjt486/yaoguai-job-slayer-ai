@@ -1,10 +1,29 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DEFAULT_PROFILE_STRUCTURE, LABELS } from '../Constants';
 import { FloatingPage, showFloatingPage } from '../autofill/AutoFill';
+import { authService } from '../../services/authService';
 
 const ResumeSection = ({ title, data, isEditing }) => {
   const renderContent = () => {
     if (Array.isArray(data)) {
+      // Special handling for skills array
+      if (title === LABELS.sections.skills) {
+        return (
+          <div className="skills-grid">
+            {data.map((skill, index) => (
+              <div key={index} className="skill-item">
+                {isEditing ? (
+                  <input type="text" value={skill} />
+                ) : (
+                  <span>{skill}</span>
+                )}
+              </div>
+            ))}
+          </div>
+        );
+      }
+      
+      // Original array handling for other sections
       return data.map((item, index) => (
         <div key={index} className="section-item">
           {Object.entries(item).map(([key, value]) => (
@@ -74,6 +93,18 @@ const Resume = () => {
   const [profile, setProfile] = useState(DEFAULT_PROFILE_STRUCTURE);
   const [isEditing, setIsEditing] = useState(false);
   const [floatingInstance, setFloatingInstance] = useState(null);
+
+  // Add effect to load saved profile
+  useEffect(() => {
+    const currentUser = authService.getCurrentUser();
+    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const userProfiles = storedProfiles[currentUser.id] || {};
+    const defaultProfile = userProfiles['1'];
+
+    if (defaultProfile) {
+      setProfile(defaultProfile);
+    }
+  }, []);
 
   const handleAutoFill = async () => {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
