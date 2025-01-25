@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { DEFAULT_PROFILE_STRUCTURE, AI_PROMPTS, AI_CONFIG } from '../Constants';
 import { authService } from '../../services/authService';
 import { LoadingButton } from '../common/LoadingButton';
@@ -6,48 +6,14 @@ import { parseDocument } from '../common/DocumentParser';
 import { aiService } from '../common/aiService';
 
 const Profiles = () => {
-  const [profiles, setProfiles] = useState([
-    {
-      id: 1,
-      profileName: 'Default Profile',
-      lastModified: '2024-02-20',
-      targetRole: 'Software Engineer',
-      targetCompany: 'Megger',
-    },
-    {
-      id: 2,
-      profileName: 'Full Stack Software Engineer',
-      lastModified: '2024-02-20',
-      targetRole: 'Full Stack Software Engineer',
-      targetCompany: 'Apkudo',
-    }
-  ]);
-
-  const handleCreateProfile = () => {
-    // TODO: Implement profile creation logic
-  };
-
-  const handleEditProfile = (id) => {
-    // TODO: Implement profile editing logic
-  };
-
-  const handleDeleteProfile = (id) => {
-    // TODO: Implement profile deletion logic
-  };
-
+  const [profiles, setProfiles] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [resumeName, setResumeName] = useState('');
   const [error, setError] = useState('');
-  const fileInputRef = useRef(null);
   const [isParsing, setIsParsing] = useState(false);
+  const fileInputRef = useRef(null);
 
-  const allowedFileTypes = [
-    'application/pdf',
-    'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/x-tex',
-    'text/plain'
-  ];
-
+  // Add handleFileSelect function
   const handleFileSelect = () => {
     fileInputRef.current.click();
   };
@@ -56,13 +22,49 @@ const Profiles = () => {
     const file = event.target.files[0];
     if (file && allowedFileTypes.includes(file.type)) {
       setSelectedFile(file);
+      setResumeName(file.name);
       setError('');
     } else {
       setSelectedFile(null);
+      setResumeName('');
       setError('Please select a valid file (PDF, DOC, DOCX, TEX, or TXT)');
     }
   };
 
+  const loadProfiles = () => {
+    const currentUser = authService.getCurrentUser();
+    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const userProfiles = storedProfiles[currentUser.id] || {};
+
+    const profilesArray = Object.values(userProfiles).sort((a, b) => {
+      if (a.id === 1) return -1;
+      if (b.id === 1) return 1;
+      return 0;
+    });
+
+    setProfiles(profilesArray);
+  };
+
+  useEffect(() => {
+    loadProfiles();
+    window.addEventListener('storage', loadProfiles);
+    return () => window.removeEventListener('storage', loadProfiles);
+  }, []);
+
+  const handleDeleteProfile = (id) => {
+    if (id === 1) return;
+
+    const currentUser = authService.getCurrentUser();
+    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+
+    if (storedProfiles[currentUser.id]) {
+      delete storedProfiles[currentUser.id][id];
+      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+      loadProfiles();
+    }
+  };
+
+  // Update handleParse to handle profile updates
   const handleParse = async () => {
     if (!selectedFile) return;
     setIsParsing(true);
@@ -83,7 +85,7 @@ const Profiles = () => {
       const parsedData = aiResponse.choices[0].message.content
         .replace(/^```json\n/, '')  // Remove opening markdown
         .replace(/\n```$/, '');     // Remove closing markdown
-        
+
       let resumeData;
       try {
         resumeData = JSON.parse(parsedData);
@@ -100,22 +102,28 @@ const Profiles = () => {
         metadata: {
           ...DEFAULT_PROFILE_STRUCTURE.metadata,
           ...resumeData.metadata,
-          lastModified: new Date().toISOString()
+          lastModified: new Date().toISOString(),
+          resumeName: resumeName  // Save the resume name
         }
       };
 
       setProfiles(prev => {
         const filtered = prev.filter(p => p.id !== 1);
-        return [defaultProfile, ...filtered];
-      });
+        const updated = [defaultProfile, ...filtered];
+        
+        // Update localStorage
+        const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+        if (!storedProfiles[currentUser.id]) {
+          storedProfiles[currentUser.id] = {};
+        }
+        storedProfiles[currentUser.id]['1'] = defaultProfile;
+        localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
 
-      // Save to localStorage
-      const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-      if (!storedProfiles[currentUser.id]) {
-        storedProfiles[currentUser.id] = {};
-      }
-      storedProfiles[currentUser.id]['1'] = defaultProfile;
-      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+        // Set as current profile
+        handleLoadProfile(defaultProfile);
+        
+        return updated;
+      });
 
     } catch (err) {
       console.error('Parse error:', err);
@@ -123,6 +131,42 @@ const Profiles = () => {
     } finally {
       setIsParsing(false);
     }
+  };
+
+  // Add function to handle setting current profile
+  const handleLoadProfile = (profile) => {
+    localStorage.setItem('currentProfile', JSON.stringify(profile));
+  };
+
+  const handleCreateProfile = () => {
+    const currentUser = authService.getCurrentUser();
+    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    
+    if (!storedProfiles[currentUser.id]) {
+      storedProfiles[currentUser.id] = {};
+    }
+
+    // Find the next available ID
+    const existingIds = Object.keys(storedProfiles[currentUser.id]).map(Number);
+    const nextId = Math.max(0, ...existingIds) + 1;
+
+    // Create new profile
+    const newProfile = {
+      id: nextId,
+      ...DEFAULT_PROFILE_STRUCTURE,
+      metadata: {
+        ...DEFAULT_PROFILE_STRUCTURE.metadata,
+        profileName: `Profile ${nextId}`,
+        lastModified: new Date().toISOString()
+      }
+    };
+
+    // Save to localStorage
+    storedProfiles[currentUser.id][nextId] = newProfile;
+    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+    
+    // Refresh profiles list
+    loadProfiles();
   };
 
   return (
@@ -134,7 +178,7 @@ const Profiles = () => {
           type="text"
           placeholder="Load a resume"
           readOnly
-          value={selectedFile ? selectedFile.name : ''}
+          value={resumeName || ''}
         />
         <input
           ref={fileInputRef}
@@ -167,6 +211,9 @@ const Profiles = () => {
             <div><small>Target Role: {profile.metadata?.targetRole || profile.targetRole}</small></div>
             <div><small>Target Company: {profile.metadata?.targetCompany || profile.targetCompany}</small></div>
             <div><small>Last modified: {profile.metadata?.lastModified || profile.lastModified}</small></div>
+            {profile.metadata?.resumeName && (
+              <div><small>Resume: {profile.metadata.resumeName}</small></div>
+            )}
             {profile.personal && (
               <>
                 <div><small>Email: {profile.personal.email}</small></div>
@@ -178,8 +225,22 @@ const Profiles = () => {
             )}
           </div>
           <div className='grid-vertical'>
-            <button className='button-full' onClick={() => handleEditProfile(profile.id)}>Load</button>
-            <button className='button-full' onClick={() => handleDeleteProfile(profile.id)}>Delete</button>
+            <button
+              className='button-full'
+              onClick={() => handleLoadProfile(profile)}
+            >
+              Load
+            </button>
+            {profile.id === 1 ? (
+              <button  className='button-full'>Download Resume</button>
+            ) : (
+              <button
+                className='button-full'
+                onClick={() => handleDeleteProfile(profile.id)}
+              >
+                Delete
+              </button>
+            )}
           </div>
         </article>
       ))}

@@ -161,7 +161,21 @@ nav {
 
 .button-full {
   flex: 1; /* Make the button stretch to fill the container */
+  display: flex; /* Use flexbox for content control */
   padding: 1em; /* Add padding for better appearance */
+  width: 70px;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden; /* Contain the text */
+}
+
+.button-full span {
+  white-space: nowrap; /* Prevent line breaks */
+  text-overflow: ellipsis; /* Add ... if text overflows */
+  overflow: hidden;
+  max-width: 100%; /* Constrain to container width */
+  flex-shrink: 1; /* Allow text to shrink */
+  min-width: 0; /* Override default minimum content size */
 }
 
 .button-square {
