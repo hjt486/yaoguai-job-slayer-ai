@@ -109,30 +109,34 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
         );
       }
 
-      return data.map((item, index) => (
-        <div key={index} className="section-item">
-          {isEditing && (
-            <button
-              className="button-small delete-button"
-              onClick={() => onEdit(section, { action: 'delete', index })}
-              style={{ float: 'right' }}
-            >
-              ×
-            </button>
-          )}
-          {Object.entries(item).map(([key, value]) => (
-            <div key={key} className="field-item">
-              <strong>{LABELS.fields[key] || key}: </strong>
-              {isEditing ? (
-                renderInput(key, value, index)
-              ) : (
-                <span style={{ whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal' }}>
-                  {getFormattedDate(key, value)}
-                </span>
+      return (
+        <>
+          {data.map((item, index) => (
+            <div key={index} className="section-item">
+              {isEditing && (
+                <button
+                  className="button-small delete-button"
+                  onClick={() => onEdit(section, { action: 'delete', index })}
+                  style={{ float: 'right' }}
+                >
+                  ×
+                </button>
               )}
+              {Object.entries(item).map(([key, value]) => (
+                <div key={key} className="field-item">
+                  <strong>{LABELS.fields[key] || key}: </strong>
+                  {isEditing ? (
+                    renderInput(key, value, index)
+                  ) : (
+                    <span style={{ whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal' }}>
+                      {getFormattedDate(key, value)}
+                    </span>
+                  )}
+                </div>
+              ))}
             </div>
           ))}
-          {index === data.length - 1 && isEditing && ARRAY_SECTIONS.includes(section) && (
+          {isEditing && ARRAY_SECTIONS.includes(section) && (
             <button
               className="button-small add-button"
               onClick={() => onEdit(section, { action: 'add' })}
@@ -140,8 +144,8 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
               Add {title}
             </button>
           )}
-        </div>
-      ));
+        </>
+      );
     } else if (typeof data === 'object' && data !== null) {
       return Object.entries(data).map(([key, value]) => (
         <div key={key} className="field-item">

@@ -284,9 +284,11 @@ nav {
 }
 
 .add-button {
-  padding: 1em;
   margin-top: 1em !important;
   background-color: var(--pico-secondary-hover-background);
+  display: block !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 /* Resume display specific styling ends */
 
