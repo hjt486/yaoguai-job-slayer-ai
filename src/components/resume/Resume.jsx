@@ -171,9 +171,8 @@ const ResumeSection = ({ title, data, section, onEdit, onSave }) => {
       <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3>{title}</h3>
         <button 
-          className="outline secondary" 
+          className="outline secondary button-small"
           onClick={isEditing ? handleSave : handleEdit}
-          style={{ marginLeft: '1rem' }}
         >
           {isEditing ? LABELS.actions.save : LABELS.actions.edit}
         </button>
@@ -287,7 +286,7 @@ const Resume = () => {
   };
 
   const handleSectionEdit = (section, updates) => {
-      console.log('Editing section:', updates, 'for section:', section); // Debug log
+      // console.log('Editing section:', updates, 'for section:', section); // Debug log
     
       setProfile(prevProfile => {
         const currentValue = prevProfile[section];

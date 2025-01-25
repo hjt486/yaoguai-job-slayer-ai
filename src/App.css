@@ -52,6 +52,12 @@
   padding: 1rem;
   text-align: left;
   background: var(--background-color);
+  /* Font sizes */
+  --font-size-xsmall: 0.75em;
+  --font-size-small: 0.8333em;
+  --font-size-normal: 1em;
+  --font-size-large: 1.1em;
+  --font-size-xlarge: 1.5em;
 }
 
 .app {
@@ -169,6 +175,16 @@ nav {
   overflow: hidden; /* Contain the text */
 }
 
+.button-small {
+  margin: 0em !important;
+  padding: 1em !important;
+  font-size: var(--font-size-xsmall) !important;
+  min-width: 25px !important;
+  height: auto !important;
+  line-height: 1 !important;
+  background: var(--secondary-hover);
+}
+
 .button-full span {
   white-space: nowrap; /* Prevent line breaks */
   text-overflow: ellipsis; /* Add ... if text overflows */
@@ -189,13 +205,13 @@ nav {
   margin-bottom: 0.25em;
 }
 
-/* Resume display specific styling starts */
+/* Then replace the specific values with the variable */
 .resume-display .field-item {
   margin: 0;
   padding: 0;
   line-height: 1.1;
   display: flex;
-  font-size: 0.8333em;
+  font-size: var(--font-size-small);
 }
 
 .resume-display .field-item strong {
@@ -222,53 +238,27 @@ nav {
 }
 
 .resume-display .skill-item span {
-  font-size: 0.8333em;
+  font-size: var(--font-size-small);
   padding: 0.2em 0.4em;
   background-color: var(--secondary-hover);
   border-radius: 4px;
   white-space: nowrap;
 }
 
-.resume-display .section-item {
-  margin-bottom: 0;
-  padding-bottom: 0.5em;
-}
-
-.resume-display .section-item:last-child {
-  border-bottom: none;
-}
-
-.resume-display .subsection {
-  margin: 0;
-}
-
-.resume-display .subsection h3 {
-  margin-bottom: 0em;
-  color: var(--primary);
-}
-
-.resume-display .resume-section {
-  margin-bottom: 0em;
-}
-
-.resume-display .section-header h2 {
-  margin-bottom: 0em;
-  padding-bottom: 0em;
-}
-
 .resume-display p {
-  font-size: 0.8333em;
+  font-size: var(--font-size-small);
   line-height: 1.2;
   margin: 0;
   padding: 0;
   white-space: pre-wrap;
 }
 
-.resume-display textarea {
-  font-size: 0.8333em;
+.resume-display textarea,
+.resume-display input[type="text"] {
+  font-size: var(--font-size-large);
   line-height: 1.2;
   margin: 0;
-  padding: 0.3em;
+  padding: 0.75em;
 }
 /* Resume display specific styling ends */
 
