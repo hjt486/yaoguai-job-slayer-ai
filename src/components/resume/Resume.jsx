@@ -450,7 +450,7 @@ const Resume = () => {
 
   const handleGeneratePDF = async () => {
     setPdfGenerated(false);
-    const fileName = `${profile.personal?.fullName || 'Resume'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}.pdf`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+    const fileName = `${profile.personal?.fullName || 'Resume'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_resume`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
 
     const success = await generatePDF(profile, fileName, profile.id);
     setPdfGenerated(success);
