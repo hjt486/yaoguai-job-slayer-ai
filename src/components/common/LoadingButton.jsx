@@ -4,7 +4,7 @@ export const LoadingButton = ({
   onClick, 
   children, 
   className = '', 
-  timeout = 10000, // 10s default timeout
+  timeout = 20000, // 10s default timeout
   loadingText = 'Processing...',
   ...props 
 }) => {

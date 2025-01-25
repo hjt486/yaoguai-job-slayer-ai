@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DEFAULT_PROFILE_STRUCTURE, LABELS, TEXTAREA_FIELDS, DATE_TIME_FIELDS, DATE_FIELDS, NOT_EDITABLE_FIELDS } from '../Constants';
 import { showFloatingPage } from '../autofill/AutoFill';
 import { authService } from '../../services/authService';
 import { formatDateTime, formatDate, getCurrentISOString } from '../common/dateUtils';
+import { generatePDF } from '../common/pdfUtils';
+import { showResumePreview } from '../common/pdfUtils';
 
 const ResumeSection = ({ title, data, isEditing, onEdit }) => {
   const shouldUseTextarea = (key, value) => {
@@ -21,18 +23,26 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
     return value;
   };
 
-  const renderInput = (key, value) => {
+  const renderInput = (key, value, index) => {
     if (NOT_EDITABLE_FIELDS.includes(key)) {
       return <small style={{ whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal' }}>
         {getFormattedDate(key, value)}
       </small>;
     }
 
+    const handleChange = (newValue) => {
+      onEdit({
+        key,
+        value: newValue,
+        index: index !== undefined ? index : null
+      });
+    };
+
     if (shouldUseTextarea(key, value)) {
       return (
         <textarea
           value={value || ''}
-          onChange={(e) => onEdit({ [key]: e.target.value })}
+          onChange={(e) => handleChange(e.target.value)}
           style={{
             width: '100%',
             minHeight: '2.5em',
@@ -49,23 +59,33 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
         />
       );
     }
-    return <input
-      type="text"
-      value={value || ''}
-      onChange={(e) => onEdit({ [key]: e.target.value })}
-    />;
+
+    return (
+      <input
+        type="text"
+        value={value || ''}
+        onChange={(e) => handleChange(e.target.value)}
+      />
+    );
   };
 
   const renderContent = () => {
     if (Array.isArray(data)) {
-      // Special handling for skills array
       if (title === LABELS.sections.skills) {
         return (
           <div className="skills-grid">
             {data.map((skill, index) => (
               <div key={index} className="skill-item">
                 {isEditing ? (
-                  renderInput('skill', skill)
+                  <input
+                    type="text"
+                    value={skill || ''}
+                    onChange={(e) => onEdit({
+                      key: 'skills',
+                      index: index,
+                      value: e.target.value
+                    })}
+                  />
                 ) : (
                   <span style={{
                     display: 'inline-block',
@@ -81,15 +101,13 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
         );
       }
 
-      // Original array handling for other sections
-      // Update in array handling
       return data.map((item, index) => (
         <div key={index} className="section-item">
           {Object.entries(item).map(([key, value]) => (
             <div key={key} className="field-item">
               <strong>{LABELS.fields[key] || key}: </strong>
               {isEditing ? (
-                renderInput(key, value)
+                renderInput(key, value, index)
               ) : (
                 <span style={{ whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal' }}>
                   {getFormattedDate(key, value)}
@@ -99,25 +117,9 @@ const ResumeSection = ({ title, data, isEditing, onEdit }) => {
           ))}
         </div>
       ));
-
-      // Update in object handling for nested objects
-      {
-        Object.entries(value).map(([subKey, subValue]) => (
-          <div key={subKey} className="field-item">
-            <strong>{LABELS.fields[subKey] || subKey}: </strong>
-            {isEditing ? (
-              renderInput(subKey, subValue)
-            ) : (
-              <span style={{ whiteSpace: shouldUseTextarea(subKey, subValue) ? 'pre-wrap' : 'normal' }}>
-                {subValue}
-              </span>
-            )}
-          </div>
-        ))
-      }
-    } else if (typeof data === 'object') {
+    } else if (typeof data === 'object' && data !== null) {
       return Object.entries(data).map(([key, value]) => {
-        if (typeof value === 'object') {
+        if (typeof value === 'object' && value !== null) {
           return (
             <div key={key} className="subsection">
               <h4>{LABELS.fields[key] || key}</h4>
@@ -194,6 +196,7 @@ const Resume = () => {
   const [profile, setProfile] = useState(DEFAULT_PROFILE_STRUCTURE);
   const [isEditing, setIsEditing] = useState(false);
   const [floatingInstance, setFloatingInstance] = useState(null);
+  const previewRef = useRef(null);
 
   // Update effect to load saved profile and listen for changes
   useEffect(() => {
@@ -288,35 +291,48 @@ const Resume = () => {
 
   const handleSectionEdit = (section, updates) => {
     setProfile(prevProfile => {
-      const currentSection = prevProfile[section];
-      
-      // Handle array sections (like skills)
-      if (Array.isArray(currentSection)) {
-        if (updates.index !== undefined) {
-          const newArray = [...currentSection];
-          newArray[updates.index] = updates.value;
+      const currentValue = prevProfile[section];
+
+      if (Array.isArray(currentValue)) {
+        if (section === 'skills') {
+          const newSkills = [...currentValue];
+          if (updates.index !== undefined) {
+            newSkills[updates.index] = updates.value;
+          } else {
+            newSkills.push(updates.value);
+          }
           return {
             ...prevProfile,
-            [section]: newArray
+            [section]: newSkills
           };
         }
+
+        const newArray = [...currentValue];
+        if (updates.index !== undefined) {
+          newArray[updates.index] = {
+            ...newArray[updates.index],
+            [updates.key]: updates.value
+          };
+        }
+        return {
+          ...prevProfile,
+          [section]: newArray
+        };
       }
-      
-      // Handle nested objects (like work experience)
-      if (typeof currentSection === 'object' && !Array.isArray(currentSection)) {
+
+      if (typeof currentValue === 'object' && currentValue !== null) {
         return {
           ...prevProfile,
           [section]: {
-            ...currentSection,
-            ...updates
+            ...currentValue,
+            [updates.key]: updates.value
           }
         };
       }
-      
-      // Handle primitive values
+
       return {
         ...prevProfile,
-        [section]: updates
+        [section]: updates.value
       };
     });
   };
@@ -336,17 +352,47 @@ const Resume = () => {
     const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
     storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
     storedProfiles[currentUser.id][profile.id] = updatedProfile;
-    
+
     console.log('Updated storage:', storedProfiles);  // Debug log
     localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
     localStorage.setItem('currentProfile', JSON.stringify(updatedProfile));
 
-    window.dispatchEvent(new CustomEvent('profileUpdated', { 
+    window.dispatchEvent(new CustomEvent('profileUpdated', {
       detail: { profile: updatedProfile }
     }));
 
     setIsEditing(false);
   };
+
+  const handleDownloadPDF = () => {
+    try {
+      console.log('Starting PDF generation with profile:', profile);
+      const doc = generatePDF(profile, 'resume');
+      console.log('PDF generation result:', doc);
+
+      if (!doc) {
+        console.error('PDF generation failed - no document returned');
+        return;
+      }
+
+      console.log('Saving PDF...');
+      doc.save(`${profile.personal?.name || 'resume'}.pdf`);
+      console.log('PDF saved successfully');
+    } catch (error) {
+      console.error('Error generating PDF:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+  };
+
+  useEffect(() => {
+    if (previewRef.current) {
+      // Clear previous preview
+      previewRef.current.innerHTML = '';
+      // Add new preview
+      const previewElement = showResumePreview(profile);
+      previewRef.current.appendChild(previewElement);
+    }
+  }, [profile, isEditing]);
 
   return (
     <article className={isEditing ? 'resume-edit' : 'resume-display'}>
@@ -366,11 +412,23 @@ const Resume = () => {
           title={label}
           data={profile[section]}
           isEditing={isEditing}
-          onEdit={(data) => handleSectionEdit(section, data)}
+          onEdit={(updates) => handleSectionEdit(section, updates)}
         />
       ))}
-      <div className='grid'><button>Download PDF Resume</button></div>
-      <div className='grid'><button>Download PDF Cover Letter</button></div>
+      <div className='grid'>
+        <button onClick={handleDownloadPDF}>Download PDF Resume</button>
+      </div>
+      <div className='grid'>
+        <button>Download PDF Cover Letter</button>
+      </div>
+
+      <div ref={previewRef} className="resume-preview-container" style={{
+        width: '100%',
+        overflow: 'auto',
+        marginTop: '2rem',
+        padding: '1rem',
+        backgroundColor: '#f5f5f5'
+      }} />
     </article>
   );
 };
