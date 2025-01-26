@@ -34,31 +34,15 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
     shadowRoot.appendChild(style);
   };
 
-  // Then use it like this:
-  // 1. Host-specific styles
+  // Modify how Pico CSS is injected
   injectStyles(`
-  all: initial !important;
-  contain: content !important;
-  display: block !important;
-  position: fixed !important;
-  top: 20px !important;
-  right: 20px !important;
-  z-index: 2147483647 !important;
-  isolation: isolate !important;
-  font-family: system-ui, sans-serif !important;
-  width: fit-content !important;
-  height: fit-content !important;
-  transform: none !important;
-  margin: 0 !important;
-  padding: 0 !important;
-`, true);
-
-  // 2. Global styles (without :host wrapper)
-  injectRootVariables();
-  injectStyles(picoCss);
+  ${picoCss
+      .replace(/:root/g, ':host')
+      .replace(/html/g, ':host')
+      .replace(/body/g, ':host > div')
+    }
+  `);
   injectStyles(appCss);
-
-  console.log('Pico CSS Content:', picoCss.slice(0, 100) + '...'); // Log first 100 chars
 
   // 3. Create React container
   const container = document.createElement('div');

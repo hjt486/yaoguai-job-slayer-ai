@@ -376,28 +376,27 @@ const Resume = () => {
           return;
         }
 
-        // First, try to inject the content script
-        console.log('[YaoguaiAI] Injecting content script...');
+        // Try to check if content script is already running
         try {
+          const isAlive = await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+          if (!isAlive) {
+            throw new Error('Content script not responding');
+          }
+        } catch (err) {
+          // Only inject if the content script isn't already there
+          console.log('[YaoguaiAI] Injecting content script...');
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['content.js']
           });
-          console.log('[YaoguaiAI] Content script injected successfully');
-        } catch (err) {
-          console.log('[YaoguaiAI] Content script already exists or injection failed:', err);
         }
 
-        // Wait a moment for the content script to initialize
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        // Now try to send the message
+        // Send message to open floating page
         console.log('[YaoguaiAI] Sending message to tab:', tab.id);
-        const response = await chrome.tabs.sendMessage(tab.id, {
+        await chrome.tabs.sendMessage(tab.id, {
           action: 'openFloatingPage',
           source: 'popup'
         });
-        console.log('[YaoguaiAI] Response received:', response);
         window.close();
       } catch (error) {
         console.error('[YaoguaiAI] Error in handleAutofill:', error);
