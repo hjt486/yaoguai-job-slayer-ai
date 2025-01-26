@@ -474,6 +474,64 @@ nav {
 
 /* Resume display specific styling ends */
 
+/* Match result specific styling starts */
+
+.match-job-description {
+  font-size: var(--font-size-small);
+}
+
+.analysis-results article {
+  margin-bottom: 0.25em;
+  font-size: var(--font-size-small);
+}
+
+.keyword-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+}
+
+.keyword-label {
+  min-width: 25%;
+  max-width: 25%;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-wrap: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.rating-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  justify-content: space-between;
+  margin: 0;
+  padding: 0;
+}
+
+.rating-group input[type="range"] {
+  width: 50%;
+  flex: 0 0 auto;
+}
+
+.rating-value {
+  text-align: right;
+}
+
+.keyword-description {
+  margin-top: 0.5rem;
+  width: 100%;
+}
+
+/* Match result specific styling ends */
+
 /* ====================================================================== */
 /* Floating Auto Fill Page Style Begins */
 /* ====================================================================== */

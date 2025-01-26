@@ -187,5 +187,25 @@ export const AI_PROMPTS = {
   Break paragraphs with two newlines.
 
   Lastly, Ensure all dates are in ISO format and all fields match exactly as specified.
-  `
+  `,
+  JOB_MATCH: `Analyze this job description and compare it with the provided profile.
+  Extract key technical skills, requirements, and qualifications from the job description.
+  Compare them with the candidate's profile and identify missing or mismatched skills.
+  
+  Return ONLY the following JSON structure without any markdown or code blocks:
+  {
+    "missingKeywords": [
+        "keyword1",
+        "keyword2",
+    ]
+  }
+
+  Important: 
+  - Do not include markdown code blocks (\`\`\`)
+  - Return only the JSON object
+  - The response must be valid JSON
+  - Include both technical skills and soft skills
+  - Consider partial matches in the profile
+  - Keywords should be strings in an array
+  - Provide specific context for each keyword`,
 };

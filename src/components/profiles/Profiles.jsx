@@ -42,7 +42,7 @@ const Profiles = () => {
       return 0;
     });
 
-    console.log('Loading profiles:', profilesArray);
+    // console.log('Loading profiles:', profilesArray);
     setProfiles(profilesArray);
   };
 

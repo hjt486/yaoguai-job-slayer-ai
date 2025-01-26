@@ -52,5 +52,47 @@ export const aiService = {
     ];
 
     return this.sendChatRequest(apiSettings, messages);
+  },
+
+  async analyzeJobMatch(apiSettings, profile, jobDescription) {
+    if (!profile || !jobDescription) {
+      throw new Error('Profile and job description are required');
+    }
+
+    const messages = [
+      AI_CONFIG.SYSTEM_MESSAGE,
+      {
+        role: "user",
+        content: `${AI_PROMPTS.JOB_MATCH}\n\nJob Description:\n${jobDescription}\n\nCandidate Profile:\n${JSON.stringify(profile, null, 2)}`
+      }
+    ];
+
+    const response = await this.sendChatRequest(apiSettings, messages);
+    
+    try {
+      // Check if response has the expected structure
+      if (!response?.choices?.[0]?.message?.content) {
+        throw new Error('Invalid API response structure');
+      }
+
+      const content = response.choices[0].message.content;
+      const parsedData = JSON.parse(content);
+
+      if (!parsedData.missingKeywords || !Array.isArray(parsedData.missingKeywords)) {
+        throw new Error('Invalid response format');
+      }
+
+      // Transform the array of strings into array of objects
+      return {
+        missingKeywords: parsedData.missingKeywords.map(keyword => ({
+          keyword,
+          rating: 0,
+          description: ''
+        }))
+      };
+    } catch (error) {
+      console.error('Failed to parse analysis response:', error, response);
+      throw new Error('Failed to parse job match analysis');
+    }
   }
 };
