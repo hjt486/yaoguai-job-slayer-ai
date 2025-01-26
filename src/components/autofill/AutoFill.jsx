@@ -46,7 +46,8 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
       top: 20px !important;
       right: 20px !important;
       z-index: 2147483647 !important;
-      contain: content !important;
+      contain: strict !important;
+      overflow: visible !important;
       isolation: isolate !important;
     }
   `, true);
@@ -57,7 +58,6 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
   ${picoCss
       .replace(/:root/g, ':host')
       .replace(/html/g, ':host')
-      .replace(/body/g, ':host > div')
     }
   `);
   injectStyles(appCss);
@@ -167,8 +167,8 @@ export const FloatingPage = ({ onClose }) => {
       className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
       style={{
         position: 'fixed',
-        right: '20px',  // Use right instead of left
-        top: '20px',
+        left: position.x + 'px',
+        top: position.y + 'px',
         cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab'),
         transform: isDragging ? `translate(${window.innerWidth - position.x}px, ${position.y}px)` : 'none'
       }}

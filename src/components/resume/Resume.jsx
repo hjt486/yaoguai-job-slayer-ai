@@ -411,7 +411,9 @@ const Resume = () => {
         setFloatingInstance(instance);
       } else {
         console.log('Unmounting floating page in DEV mode');
-        floatingInstance.remove();
+        if (document.body.contains(floatingInstance)) {
+          floatingInstance.remove();
+        }
         setFloatingInstance(null);
       }
     }
