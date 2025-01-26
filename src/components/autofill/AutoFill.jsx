@@ -6,8 +6,14 @@ import * as ReactDOM from 'react-dom/client';
 import picoCss from '@picocss/pico/css/pico.css?raw';
 import appCss from '../../App.css?raw';
 
+
+
 // Create a unified mounting function for both DEV and Extension modes
 const mountFloatingPage = (onClose, sendResponse = null) => {
+  const isExtension = () => {
+    return typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
+  };
+
   // Check for existing instance
   const existingHost = document.getElementById('yaoguai-host');
   if (existingHost) {
@@ -19,28 +25,32 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
   hostContainer.id = 'yaoguai-host';
   document.body.appendChild(hostContainer);
 
-  const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
+  // Declare container variable
+  let container;
 
-  // Modify the style injection to have:
-  const injectStyles = (cssContent, isHostStyles = false) => {
-    const style = document.createElement('style');
-    style.textContent = isHostStyles ? `:host { ${cssContent} }` : cssContent;
-    shadowRoot.appendChild(style);
-  };
+  if (isExtension()) {
+    const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
 
-  const injectRootVariables = () => {
-    const rootStyles = getComputedStyle(document.documentElement);
-    const variables = [...rootStyles]
-      .filter(prop => prop.startsWith('--'))
-      .map(prop => `${prop}: ${rootStyles.getPropertyValue(prop)};`)
-      .join('\n');
+    // Modify the style injection to have:
+    const injectStyles = (cssContent, isHostStyles = false) => {
+      const style = document.createElement('style');
+      style.textContent = isHostStyles ? `:host { ${cssContent} }` : cssContent;
+      shadowRoot.appendChild(style);
+    };
 
-    const style = document.createElement('style');
-    style.textContent = `:host, :host * { ${variables} }`;
-    shadowRoot.appendChild(style);
-  };
+    const injectRootVariables = () => {
+      const rootStyles = getComputedStyle(document.documentElement);
+      const variables = [...rootStyles]
+        .filter(prop => prop.startsWith('--'))
+        .map(prop => `${prop}: ${rootStyles.getPropertyValue(prop)};`)
+        .join('\n');
 
-  injectStyles(`
+      const style = document.createElement('style');
+      style.textContent = `:host, :host * { ${variables} }`;
+      shadowRoot.appendChild(style);
+    };
+
+    injectStyles(`
     :host {
       position: fixed !important;
       top: 20px !important;
@@ -53,18 +63,31 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
   `, true);
 
 
-  // Modify how Pico CSS is injected
-  injectStyles(`
+    // Modify how Pico CSS is injected
+    injectStyles(`
   ${picoCss
-      .replace(/:root/g, ':host')
-      .replace(/html/g, ':host')
-    }
+        .replace(/:root/g, ':host')
+        .replace(/html/g, ':host')
+      }
   `);
-  injectStyles(appCss);
+    injectStyles(appCss);
 
-  // 3. Create React container
-  const container = document.createElement('div');
-  shadowRoot.appendChild(container);
+    // Create React container
+    container = document.createElement('div');
+    shadowRoot.appendChild(container);
+  } else {
+    const styleTag = document.createElement('style');
+    styleTag.textContent = `
+      ${picoCss}
+      ${appCss}
+      #yaoguai-host { 
+        z-index: 2147483647 !important;
+        contain: content !important;
+      }
+    `;
+    document.head.appendChild(styleTag);
+    container = hostContainer;
+  }
 
   // 4. Render React component
   const root = ReactDOM.createRoot(container);
@@ -121,7 +144,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 
 export const FloatingPage = ({ onClose }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [position, setPosition] = useState({ x: window.innerWidth - 60, y: 20 });
+  const [position, setPosition] = useState({ x: 20, y: 20 }); // Simplified positioning
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
@@ -167,8 +190,7 @@ export const FloatingPage = ({ onClose }) => {
       className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
       style={{
         position: 'fixed',
-        left: position.x + 'px',
-        top: position.y + 'px',
+        right: position.x + 'px', // Changed to right-based positioning
         cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab'),
         transform: isDragging ? `translate(${window.innerWidth - position.x}px, ${position.y}px)` : 'none'
       }}
