@@ -50,15 +50,15 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
 
     injectStyles(`
     :host {
-      position: fixed !important;
-      top: 20px !important;
-      right: 20px !important;
-      z-index: 2147483647 !important;
-      contain: strict !important;
-      overflow: visible !important;
-      isolation: isolate !important;
-    }
-  `, true);
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 2147483647 !important;
+        contain: strict !important;
+        overflow: visible !important;
+        isolation: isolate !important;
+      }
+    `, true);
 
 
     // Modify how Pico CSS is injected
@@ -142,7 +142,7 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 
 export const FloatingPage = ({ onClose }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [position, setPosition] = useState({ x: 20, y: 20 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
