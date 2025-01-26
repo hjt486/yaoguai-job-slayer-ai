@@ -1,5 +1,3 @@
-@import "@picocss/pico";
-
 /* Light color scheme (Default) */
 [data-theme=light],
 :root:not([data-theme=dark]) {

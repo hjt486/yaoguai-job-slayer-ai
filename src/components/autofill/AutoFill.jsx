@@ -3,7 +3,7 @@ import { SITE_LOGO } from '../common/Constants';
 import * as ReactDOM from 'react-dom/client';
 
 // Import CSS as raw strings using Vite's ?raw suffix
-import picoCss from '@picocss/pico/css/pico.min.css?raw';
+import picoCss from '@picocss/pico/css/pico.css?raw';
 import appCss from '../../App.css?raw';
 
 export const FloatingPage = ({ onClose }) => {
