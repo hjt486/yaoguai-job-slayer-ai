@@ -8,7 +8,7 @@ import {
   NOT_EDITABLE_FIELDS,
   ARRAY_SECTIONS
 } from '../common/Constants';
-import { showFloatingPage } from '../autofill/AutoFill';
+import { showFloatingPage } from '../autofill/Autofill';
 import { authService } from '../../services/authService';
 import { formatDateTime, formatDate, getCurrentISOString } from '../common/dateUtils';
 import { generatePDF, downloadStoredPDF } from '../common/pdfUtils';
@@ -362,7 +362,7 @@ const Resume = () => {
     );
   }
 
-  const handleAutoFill = async () => {
+  const handleAutofill = async () => {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
       try {
         console.log('[YaoguaiAI] Getting active tab...');
@@ -400,7 +400,7 @@ const Resume = () => {
         console.log('[YaoguaiAI] Response received:', response);
         window.close();
       } catch (error) {
-        console.error('[YaoguaiAI] Error in handleAutoFill:', error);
+        console.error('[YaoguaiAI] Error in handleAutofill:', error);
       }
     } else {
       // DEV mode: toggle floating page with proper Shadow DOM
@@ -542,7 +542,7 @@ const Resume = () => {
   return (
     <article className="resume-display">
       <div className='grid'>
-        <button onClick={handleAutoFill}>
+        <button onClick={handleAutofill}>
           {typeof chrome === 'undefined' ? 'Toggle Auto Fill' : 'Auto Fill'}
         </button>
       </div>
