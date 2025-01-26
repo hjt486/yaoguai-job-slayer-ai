@@ -12,62 +12,73 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
     return typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.id;
   };
 
-  // Check for existing instance
-  const existingHost = document.getElementById('yaoguai-host');
-  if (existingHost) {
-    console.log('[YaoguaiAI] Instance already exists, removing...');
-    existingHost.remove();
-  }
+  // Cleanup existing instance
+  document.getElementById('yaoguai-host')?.remove();
 
   const hostContainer = document.createElement('div');
   hostContainer.id = 'yaoguai-host';
   document.body.appendChild(hostContainer);
 
-  // Declare container variable
   let container;
 
   if (isExtension()) {
     const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
 
-    // Modify the style injection to have:
-    const injectStyles = (cssContent, isHostStyles = false) => {
-      const style = document.createElement('style');
-      style.textContent = isHostStyles ? `:host { ${cssContent} }` : cssContent;
-      shadowRoot.appendChild(style);
-    };
+    // Shadow DOM specific styling
+    shadowRoot.appendChild(
+      Object.assign(document.createElement('style'), {
+        textContent: `
+          :host {
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            z-index: 2147483647 !important;
+            contain: content !important;
+            isolation: isolate !important;
+            width: fit-content !important;
+            height: fit-content !important;
+          }`
+      })
+    );
 
-    // Modify how Pico CSS is injected
-    injectStyles(`
-      ${picoCss
-        .replace(/:root/g, ':host')
-      }`);
+    // Simplified style injection
+    const injectStyles = css => shadowRoot.appendChild(
+      Object.assign(document.createElement('style'), { textContent: css })
+    );
+
+    // Inject modified CSS
+    injectStyles(picoCss.replace(/:root/g, ':host'));
     injectStyles(appCss);
 
-    // Create React container
     container = document.createElement('div');
     shadowRoot.appendChild(container);
   } else {
-    const styleTag = document.createElement('style');
-    styleTag.textContent = `
-      ${picoCss}
-      ${appCss}
-      #yaoguai-host { 
-      z-index: 2147483647 !important;
-      contain: content !important;
-      }`
-    document.head.appendChild(styleTag);
+    // DEV mode styling
+    document.head.appendChild(
+      Object.assign(document.createElement('style'), {
+        textContent: `
+          ${picoCss}
+          ${appCss}
+          #yaoguai-host { 
+            position: fixed !important;
+            top: 20px !important;
+            right: 20px !important;
+            z-index: 2147483647 !important;
+            contain: content !important;
+          }`
+      })
+    );
     container = hostContainer;
   }
 
-  // 4. Render React component
   const root = ReactDOM.createRoot(container);
   root.render(
     <FloatingPage
       onClose={() => {
         root.unmount();
         hostContainer.remove();
-        if (sendResponse) sendResponse({ success: true });
-        if (onClose) onClose();
+        sendResponse?.({ success: true });
+        onClose?.();
       }}
     />
   );
