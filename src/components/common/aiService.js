@@ -94,5 +94,73 @@ export const aiService = {
       console.error('Failed to parse analysis response:', error, response);
       throw new Error('Failed to parse job match analysis');
     }
+  },
+
+  async generateEnhancedProfile(apiSettings, currentProfile, jobDescription, missingKeywords) {
+    if (!currentProfile || !jobDescription || !missingKeywords) {
+      throw new Error('Current profile, job description, and missing keywords are required');
+    }
+
+    console.log('Profile Enhancement Request:', {
+      profile: currentProfile.metadata?.profileName || 'Unnamed Profile',
+      jobDescription: jobDescription.substring(0, 100) + '...',
+      missingKeywordsCount: missingKeywords.length,
+      missingKeywords: missingKeywords.map(k => k.keyword)
+    });
+
+    const messages = [
+      AI_CONFIG.SYSTEM_MESSAGE,
+      {
+        role: "user",
+        content: `${AI_PROMPTS.PROFILE_ENHANCE}
+
+Current Profile:
+${JSON.stringify(currentProfile, null, 2)}
+
+Job Description:
+${jobDescription}
+
+Missing Keywords (with ratings and descriptions):
+${JSON.stringify(missingKeywords, null, 2)}`
+      }
+    ];
+
+    const response = await this.sendChatRequest(apiSettings, messages);
+    
+    try {
+      if (!response?.choices?.[0]?.message?.content) {
+        throw new Error('Invalid API response structure');
+      }
+
+      const content = response.choices[0].message.content;
+      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/);
+
+      if (!jsonMatch) {
+        throw new Error('Could not extract JSON from AI response');
+      }
+
+      const enhancedProfile = JSON.parse(jsonMatch[1]);
+      
+      console.log('Profile Enhancement Result:', {
+        originalName: currentProfile.metadata?.profileName,
+        enhancedName: enhancedProfile.metadata?.profileName,
+        skillsCount: enhancedProfile.skills?.length || 0,
+        addedSkills: enhancedProfile.skills?.filter(
+          skill => !currentProfile.skills?.includes(skill)
+        ),
+        coverLetterLength: enhancedProfile.coverLetter?.length || 0
+      });
+
+      // Validate the enhanced profile structure matches DEFAULT_PROFILE_STRUCTURE
+      if (!enhancedProfile.metadata || !enhancedProfile.personal) {
+        throw new Error('Enhanced profile does not match required structure');
+      }
+
+      return enhancedProfile;
+
+    } catch (error) {
+      console.error('Failed to parse enhanced profile response:', error, response);
+      throw new Error('Failed to generate enhanced profile');
+    }
   }
 };

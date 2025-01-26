@@ -146,11 +146,16 @@ const Profiles = () => {
       // If the deleted profile was the current profile
       const currentProfile = JSON.parse(localStorage.getItem('currentProfile'));
       if (currentProfile && currentProfile.id === id) {
-        // Find another profile to load if available
+        // Find profile with next lower ID
         const remainingProfiles = Object.values(storedProfiles[currentUser.id]);
-        if (remainingProfiles.length > 0) {
-          // Load the first available profile
-          handleLoadProfile(remainingProfiles[0]);
+        const sortedProfiles = remainingProfiles.sort((a, b) => b.id - a.id);
+        const nextProfile = sortedProfiles.find(p => p.id < id);
+
+        if (nextProfile) {
+          handleLoadProfile(nextProfile);
+        } else if (sortedProfiles.length > 0) {
+          // If no lower ID found, take the highest ID
+          handleLoadProfile(sortedProfiles[0]);
         } else {
           localStorage.removeItem('currentProfile');
           setCurrentProfileId(null);
@@ -354,8 +359,9 @@ const Profiles = () => {
     storedProfiles[currentUser.id][nextId] = newProfile;
     localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
 
-    // Refresh profiles list
+    // Refresh profiles list and load the new profile
     loadProfiles();
+    handleLoadProfile(newProfile);  // Add this line to automatically load the copied profile
   };
 
   return (

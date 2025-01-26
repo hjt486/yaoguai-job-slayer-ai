@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { authService } from '../../services/authService';
 import { aiService } from '../common/aiService';
+import { LoadingButton } from '../common/LoadingButton';
+import Modal from '../common/Modal';
 
-const Match = () => {
+const Match = ({ setActiveTab }) => {
   const [currentProfile, setCurrentProfile] = useState(() => {
     const savedProfile = localStorage.getItem('currentProfile');
     return savedProfile ? JSON.parse(savedProfile) : null;
@@ -87,43 +89,96 @@ const Match = () => {
     }
   };
 
-  const handleGenerateProfile = () => {
-    if (!analysisResults?.missingKeywords || !currentProfile?.id) {
-      setError('No analysis results available');
-      return;
+  // In handleGenerateProfile, update the success state
+  // Replace showSuccess state with showSuccessModal
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+  // Update handleGenerateProfile to use modal
+  const handleGenerateProfile = async () => {
+    setError('');
+
+    try {
+      if (!analysisResults?.missingKeywords || !currentProfile?.id) {
+        throw new Error('No analysis results available');
+      }
+
+      const currentUser = authService.getCurrentUser();
+      if (!currentUser?.id) {
+        throw new Error('Please log in first');
+      }
+
+      const apiSettings = authService.getUserApiSettings(currentUser.id);
+      if (!apiSettings) {
+        throw new Error('Please configure API settings first');
+      }
+
+      // Generate enhanced profile using AI
+      const enhancedProfile = await aiService.generateEnhancedProfile(
+        apiSettings,
+        currentProfile,
+        jobDescription,
+        analysisResults.missingKeywords
+      );
+
+      // Create new profile with enhanced data
+      const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+      if (!storedProfiles[currentUser.id]) {
+        storedProfiles[currentUser.id] = {};
+      }
+
+      // Find next available ID
+      const existingIds = Object.keys(storedProfiles[currentUser.id]).map(Number);
+      const nextId = Math.max(0, ...existingIds) + 1;
+
+      // Create new profile
+      const newProfile = {
+        ...enhancedProfile,
+        id: nextId,
+        metadata: {
+          ...enhancedProfile.metadata,
+          profileName: `${currentProfile.metadata.profileName} (Enhanced)`,
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString()
+        }
+      };
+
+      setShowSuccessModal(true);
+
+      // Save to localStorage
+      storedProfiles[currentUser.id][nextId] = newProfile;
+      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+
+      // Clear the match data for the new profile
+      localStorage.removeItem(`jobDescription_${currentUser.id}_${nextId}`);
+      localStorage.removeItem(`analysisResults_${currentUser.id}_${nextId}`);
+
+      // Save as current profile and update last loaded profile
+      localStorage.setItem('currentProfile', JSON.stringify(newProfile));
+      localStorage.setItem(`lastLoadedProfile_${currentUser.id}`, nextId.toString());
+      
+      // Clear current match data
+      setJobDescription('');
+      setAnalysisResults(null);
+      
+      // Update current profile
+      setCurrentProfile(newProfile);
+
+      // Trigger profile update event
+      window.dispatchEvent(new CustomEvent('profileLoaded', {
+        detail: { profile: newProfile }
+      }));
+
+      setActiveTab('resume');
+    } catch (err) {
+      console.error('Profile generation error:', err);
+      setError(err.message);
     }
-
-    const currentUser = authService.getCurrentUser();
-    if (!currentUser?.id) {
-      setError('Please log in first');
-      return;
-    }
-
-    // Store missing keywords separately with profile reference
-    const missingSkillsKey = `missingSkills_${currentUser.id}_${currentProfile.id}`;
-    const existingSkills = JSON.parse(localStorage.getItem(missingSkillsKey) || '[]');
-
-    const updatedSkills = [
-      ...existingSkills,
-      ...analysisResults.missingKeywords
-        .filter(item => item.rating > 1)
-        .map(item => ({
-          keyword: item.keyword,
-          rating: item.rating,
-          description: item.description,
-          jobDescription: jobDescription,
-          analyzedAt: new Date().toISOString()
-        }))
-    ];
-
-    localStorage.setItem(missingSkillsKey, JSON.stringify(updatedSkills));
-    setError('Missing skills saved successfully');
   };
 
   const handleRatingChange = (index, value) => {
     setAnalysisResults(prev => {
       if (!prev || !prev.missingKeywords) return prev;
-      
+
       const updatedKeywords = [...prev.missingKeywords];
       updatedKeywords[index] = {
         ...updatedKeywords[index],
@@ -140,7 +195,7 @@ const Match = () => {
   const handleDescriptionChange = (index, value) => {
     setAnalysisResults(prev => {
       if (!prev || !prev.missingKeywords) return prev;
-      
+
       const updatedKeywords = [...prev.missingKeywords];
       updatedKeywords[index] = {
         ...updatedKeywords[index],
@@ -167,13 +222,14 @@ const Match = () => {
       </div>
       {error && <small style={{ color: 'red' }}>{error}</small>}
       <div className='grid'>
-        <button
+        <LoadingButton
           onClick={handleAnalyze}
-          aria-busy={isAnalyzing}
-          disabled={!jobDescription || isAnalyzing}
+          disabled={!jobDescription}
+          timeout={60000}
+          loadingText="Analyzing..."
         >
-          {isAnalyzing ? 'Analyzing...' : 'Analyze'}
-        </button>
+          Analyze
+        </LoadingButton>
       </div>
 
       {analysisResults && (
@@ -192,7 +248,7 @@ const Match = () => {
                     min="1"
                     max="5"
                     value={item.rating || 1}
-                    style={{ height: '2em'}}
+                    style={{ height: '2em' }}
                     onChange={(e) => handleRatingChange(index, parseInt(e.target.value, 10))}
                   />
                   <small className="rating-value">Rating: {item.rating}/5</small>
@@ -207,14 +263,23 @@ const Match = () => {
               />
             </article>
           ))}
-          <div className='grid'>
-            <button
+          <div className='grid-vertical'>
+            <LoadingButton
               onClick={handleGenerateProfile}
               style={{ marginTop: '20px' }}
+              timeout={60000}
+              loadingText="Generating..."
             >
               Generate New Profile
-            </button>
+            </LoadingButton>
           </div>
+          <Modal
+            isOpen={showSuccessModal}
+            onClose={() => setShowSuccessModal(false)}
+          >
+            <h1>Profile Generation</h1>
+            <p>Enhanced profile generated successfully!</p>
+          </Modal>
         </div>
       )}
     </article>

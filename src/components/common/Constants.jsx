@@ -208,4 +208,33 @@ export const AI_PROMPTS = {
   - Consider partial matches in the profile
   - Keywords should be strings in an array
   - Provide specific context for each keyword`,
+  PROFILE_ENHANCE: `Given the current profile, job description, and missing keywords, please enhance the profile following these rules:
+
+  1. For missing keywords with rating >= 1:
+     - Add them to the skills section
+     - If description includes details, based on the rating:
+       - integrate into relevant sections use your best judgement and words:
+        - Add to summary if it's a general skill
+        - Add to experience if it's job-related
+        - Add to education if it's academic
+        - Add to projects if it's project-related
+        - Add to achievements if it's certification/award related
+      - If it's a general saying on something similar "I worked on school project" without saying when, put it into the latest school.
+      - Apply the same principle above to other sections.
+
+  2. For keywords with rating = 0:
+     - Do not add to skills
+     - Incorporate into cover letter positively, emphasizing:
+       - Eagerness to learn
+       - Transferable skills, for example, missing Azure or Google cloud, but user has AWS in profile.
+       - Related experience that could help quick learning
+
+  3. Overall Enhancement:
+     - Maintain truthfulness of the original profile
+     - Improve professional language
+     - Highlight relevant experiences
+     - Strengthen alignment with job description
+
+  Return the enhanced profile in this exact JSON structure: ${JSON.stringify(DEFAULT_PROFILE_STRUCTURE, null, 2)}
+  `,
 };

@@ -32,7 +32,7 @@ const App = () => {
         <TabLayout activeTab={activeTab} onTabChange={setActiveTab}>
           {activeTab === 'profiles' && <Profiles />}
           {activeTab === 'resume' && <Resume />}
-          {activeTab === 'match' && <Match />}
+          {activeTab === 'match' && <Match setActiveTab={setActiveTab} />}
           {activeTab === 'settings' && <Settings />}
         </TabLayout>
       )}
