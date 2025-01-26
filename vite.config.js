@@ -1,23 +1,18 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import { resolve } from 'path';
 
 export default defineConfig({
   plugins: [react()],
   build: {
-    outDir: 'dist',
+    chunkSizeWarningLimit: 1000, // Increase warning limit to 1000kb
     rollupOptions: {
-      input: {
-        index: resolve(__dirname, 'index.html'),
-        background: resolve(__dirname, 'public/background.js')
-      },
       output: {
-        entryFileNames: '[name].js',
-        assetFileNames: 'assets/[name].[ext]',
-        dir: 'dist'
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          pdf: ['pdfjs-dist'],
+          canvas: ['html2canvas'],
+        }
       }
-    },
-    emptyOutDir: true
-  },
-  publicDir: 'public'
+    }
+  }
 });

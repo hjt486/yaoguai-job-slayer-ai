@@ -70,66 +70,86 @@ export const DEFAULT_PROFILE_STRUCTURE = {
 
 export const LABELS = {
   sections: {
-    metadata: "Profile Data",
-    personal: "Personal Information",
-    education: "Education",
-    experience: "Professional Experience",
-    skills: "Skills & Technologies",
-    achievements: "Achievements & Awards",
-    projects: "Projects",
-    coverLetter: "Cover Letter"
+    metadata: {
+      name: "Profile Data",
+      fields: {
+        profileName: "Profile Name",
+        resumeName: "Resume File",
+        targetRole: "Target Role",
+        targetCompany: "Target Company",
+        jobId: "Job ID",
+        jobDescription: "Job Description",
+        createdAt: "Created At",
+        lastModified: "Last Modified"
+      }
+    },
+    personal: {
+      name: "Personal Information",
+      fields: {
+        fullName: "Full Name",
+        email: "Email Address",
+        phone: "Phone Number",
+        location: "Location",
+        website: "Website",
+        linkedin: "LinkedIn Profile",
+        summary: "Professional Summary"
+      }
+    },
+    education: {
+      name: "Education",
+      fields: {
+        degree: "Degree",
+        school: "School/University",
+        field: "Field of Study",
+        startDate: "Start Date",
+        endDate: "End Date",
+        achievements: "Achievements"
+      }
+    },
+    experience: {
+      name: "Professional Experience",
+      fields: {
+        jobTitle: "Job Title",
+        company: "Company",
+        location: "Location",
+        startDate: "Start Date",
+        endDate: "End Date",
+        responsibilities: "Responsibilities"
+      }
+    },
+    skills: {
+      name: "Skills & Technologies",
+      fields: {}
+    },
+    achievements: {
+      name: "Achievements & Awards",
+      fields: {
+        name: "Achievement Name",
+        awardedDate: "Date Awarded",
+        description: "Description",
+        issuer: "Issuing Organization"
+      }
+    },
+    projects: {
+      name: "Projects",
+      fields: {
+        name: "Project Name",
+        startDate: "Start Date",
+        endDate: "End Date",
+        description: "Description"
+      }
+    },
+    coverLetter: {
+      name: "Cover Letter",
+      fields: {}
+    }
   },
   actions: {
     edit: "Edit",
     save: "Save",
     cancel: "Cancel"
-  },
-  fields: {
-    // Metadata fields
-    profileName: "Profile Name",
-    resumeName: "Resume File",
-    targetRole: "Target Role",
-    targetCompany: "Target Company",
-    jobId: "Job ID",
-    jobDescription: "Job Description",
-    createdAt: "Created At",
-    lastModified: "Last Modified",
-
-    // Personal fields
-    fullName: "Full Name",
-    email: "Email Address",
-    phone: "Phone Number",
-    location: "Location",
-    website: "Website",
-    linkedin: "LinkedIn Profile",
-    summary: "Professional Summary",
-
-    // Education fields
-    degree: "Degree",
-    school: "School/University",
-    field: "Field of Study",
-    startDate: "Start Date",
-    endDate: "End Date",
-    achievements: "Achievements",
-
-    // Experience fields
-    jobTitle: "Job Title",
-    company: "Company",
-    responsibilities: "Responsibilities",
-
-    // Achievement fields
-    name: "Achievement Name",
-    awardedDate: "Date Awarded",
-    description: "Description",
-    issuer: "Issuing Organization",
-
-    // Projects fields
-    name: "Project Name",
-    startDate: "Start Date",
-    endDate: "End Date",
-    description: "Description",
   }
-}
+};
 
 export const ARRAY_SECTIONS = [
   'education',

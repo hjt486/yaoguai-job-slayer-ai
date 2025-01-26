@@ -15,6 +15,7 @@ import { generatePDF, downloadStoredPDF } from '../common/pdfUtils';
 import { LoadingButton } from '../common/LoadingButton';
 import moment from 'moment';
 
+// Update ResumeSection component
 const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [originalData, setOriginalData] = useState(null);
@@ -118,9 +119,10 @@ const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
     />;
   };
 
+  // Update field label references in renderContent
   const renderContent = () => {
     if (Array.isArray(data)) {
-      if (title === LABELS.sections.skills) {
+      if (section === 'skills') {  // Changed from comparing title
         return (
           <div className="skills-grid">
             {data.map((skill, index) => (
@@ -174,7 +176,7 @@ const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
               )}
               {Object.entries(item).map(([key, value]) => (
                 <div key={key} className="field-item">
-                  <strong>{LABELS.fields[key] || key}: </strong>
+                  <strong>{LABELS.sections[section]?.fields[key] || key}: </strong>
                   {isEditing ? (
                     renderInput(key, value, index)
                   ) : (
@@ -191,7 +193,7 @@ const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
               className="button-small add-button"
               onClick={() => onEdit(section, { action: 'add' })}
             >
-              Add {title}
+              Add {LABELS.sections[section].name}
             </button>
           )}
         </>
@@ -199,7 +201,7 @@ const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
     } else if (typeof data === 'object' && data !== null) {
       return Object.entries(data).map(([key, value]) => (
         <div key={key} className="field-item">
-          <strong>{LABELS.fields[key] || key}: </strong>
+          <strong>{LABELS.sections[section]?.fields[key] || key}: </strong>
           {isEditing ? (
             renderInput(key, value)
           ) : (
@@ -239,7 +241,7 @@ const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
   return (
     <section className="resume-section">
       <div className="section-header">
-        <h3>{title}</h3>
+        <h3>{LABELS.sections[section].name}</h3>
         {!isEditing && (
           <button
             className="outline button-small"
