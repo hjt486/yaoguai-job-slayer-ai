@@ -1,9 +1,9 @@
-import * as pdfjs from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist';
+import { GlobalWorkerOptions } from 'pdfjs-dist';
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.js';
 
-// Use the correct version (3.11.174)
-const PDFJS_VERSION = '3.11.174';
-pdfjs.GlobalWorkerOptions.workerSrc = 
-  `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.min.js`;
+// Configure PDF.js worker
+GlobalWorkerOptions.workerSrc = workerSrc;
 
 const processText = (text) => {
   // Basic text cleanup
@@ -28,10 +28,11 @@ export const parseDocument = async (file) => {
     
     if (file.type === 'application/pdf') {
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await pdfjs.getDocument({
+      const pdf = await pdfjsLib.getDocument({
         data: arrayBuffer,
-        cMapUrl: `https://cdn.jsdelivr.net/npm/pdfjs-dist@${PDFJS_VERSION}/cmaps/`,
-        cMapPacked: true
+        standardFontDataUrl: 'built-in',
+        disableFontFace: true,
+        useSystemFonts: true
       }).promise;
 
       const textContent = [];
