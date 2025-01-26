@@ -28,6 +28,30 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
     shadowRoot.appendChild(style);
   };
 
+  const injectRootVariables = () => {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const variables = [...rootStyles]
+      .filter(prop => prop.startsWith('--'))
+      .map(prop => `${prop}: ${rootStyles.getPropertyValue(prop)};`)
+      .join('\n');
+
+    const style = document.createElement('style');
+    style.textContent = `:host, :host * { ${variables} }`;
+    shadowRoot.appendChild(style);
+  };
+
+  injectStyles(`
+    :host {
+      position: fixed !important;
+      top: 20px !important;
+      right: 20px !important;
+      z-index: 2147483647 !important;
+      contain: content !important;
+      isolation: isolate !important;
+    }
+  `, true);
+
+
   // Modify how Pico CSS is injected
   injectStyles(`
   ${picoCss
@@ -142,10 +166,11 @@ export const FloatingPage = ({ onClose }) => {
       id="yaoguai-floating-container"
       className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
       style={{
-        // position: 'absolute',
-        // left: position.x + 'px',
-        // top: position.y + 'px',
-        cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab')
+        position: 'fixed',
+        right: '20px',  // Use right instead of left
+        top: '20px',
+        cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab'),
+        transform: isDragging ? `translate(${window.innerWidth - position.x}px, ${position.y}px)` : 'none'
       }}
       onMouseDown={handleMouseDown}
     >
