@@ -8,24 +8,18 @@ import appCss from '../../App.css?raw';
 
 // Create a unified mounting function for both DEV and Extension modes
 const mountFloatingPage = (onClose, sendResponse = null) => {
+  // Check for existing instance
+  const existingHost = document.getElementById('yaoguai-host');
+  if (existingHost) {
+    console.log('[YaoguaiAI] Instance already exists, removing...');
+    existingHost.remove();
+  }
+
   const hostContainer = document.createElement('div');
   hostContainer.id = 'yaoguai-host';
   document.body.appendChild(hostContainer);
 
   const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
-
-  const injectRootVariables = () => {
-    const rootStyles = getComputedStyle(document.documentElement);
-    const variables = [...rootStyles]
-      .filter(prop => prop.startsWith('--'))
-      .map(prop => `${prop}: ${rootStyles.getPropertyValue(prop)};`)
-      .join('\n');
-
-    const style = document.createElement('style');
-    style.textContent = `:host, :host * { ${variables} }`;
-    shadowRoot.appendChild(style);
-  };
-
 
   // Modify the style injection to have:
   const injectStyles = (cssContent, isHostStyles = false) => {
@@ -70,15 +64,18 @@ export const showFloatingPage = (onClose) => {
   return mountFloatingPage(onClose);
 };
 
-// Use for Extension mode
+// In the initializeContentScript function
 const initializeContentScript = () => {
   console.log('[YaoguaiAI] Content script initializing...');
 
+  // Add ping handler
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('[YaoguaiAI] Message received in content script:', message);
-    console.log('[YaoguaiAI] Sender:', sender);
+    if (message.action === 'ping') {
+      sendResponse({ alive: true });
+      return true;
+    }
 
-    if (message && message.action === 'openFloatingPage') {
+    if (message.action === 'openFloatingPage') {
       console.log('[YaoguaiAI] Attempting to mount floating page...');
       try {
         const container = mountFloatingPage(null, sendResponse);
@@ -88,13 +85,9 @@ const initializeContentScript = () => {
         console.error('[YaoguaiAI] Error mounting floating page:', error);
         sendResponse({ success: false, error: error.message });
       }
-    } else {
-      console.log('[YaoguaiAI] Received message with unknown action:', message);
     }
     return true;
   });
-
-  console.log('[YaoguaiAI] Content script initialized and listening for messages');
 };
 
 if (typeof chrome !== 'undefined' && chrome.runtime) {
