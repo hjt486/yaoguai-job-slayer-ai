@@ -3,7 +3,7 @@ import { SITE_LOGO } from '../common/Constants';
 import * as ReactDOM from 'react-dom/client';
 
 // Import CSS as raw strings using Vite's ?raw suffix
-import picoCss from '@picocss/pico/css/pico.css?raw'; // v2 path
+import picoCss from '@picocss/pico/css/pico.min.css?raw';
 import appCss from '../../App.css?raw';
 
 export const FloatingPage = ({ onClose }) => {
@@ -126,8 +126,8 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
     }
   `);
 
+  injectStyles(picoCss);  // Imported Pico CSS
   injectStyles(appCss);   // Imported App CSS
-  //injectStyles(picoCss);  // Imported Pico CSS
 
   // 3. Create React container
   const container = document.createElement('div');
