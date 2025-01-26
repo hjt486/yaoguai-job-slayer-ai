@@ -6,8 +6,6 @@ import * as ReactDOM from 'react-dom/client';
 import picoCss from '@picocss/pico/css/pico.css?raw';
 import appCss from '../../App.css?raw';
 
-
-
 // Create a unified mounting function for both DEV and Extension modes
 const mountFloatingPage = (onClose, sendResponse = null) => {
   const isExtension = () => {
@@ -144,18 +142,27 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 
 export const FloatingPage = ({ onClose }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [position, setPosition] = useState({ x: 20, y: 20 }); // Simplified positioning
+  const [position, setPosition] = useState({ x: 20, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
   const handleMouseDown = (e) => {
     if (!isExpanded) {
       e.preventDefault();
+      e.stopPropagation();
       setIsDragging(true);
       dragOffset.current = {
         x: e.clientX - position.x,
         y: e.clientY - position.y
       };
+    }
+  };
+
+  const handleClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isDragging) {
+      setIsExpanded(prev => !prev);
     }
   };
 
@@ -189,23 +196,22 @@ export const FloatingPage = ({ onClose }) => {
       id="yaoguai-floating-container"
       className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
       style={{
-        position: 'fixed',
-        right: position.x + 'px', // Changed to right-based positioning
         cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab'),
-        transform: isDragging ? `translate(${window.innerWidth - position.x}px, ${position.y}px)` : 'none'
+        zIndex: 2147483647,
+        background: 'white',
       }}
       onMouseDown={handleMouseDown}
     >
       {isExpanded ? (
-        <article style={{ margin: 0 }} className='test-class '>
-          <header onClick={() => setIsExpanded(false)}>
+        <article style={{ margin: 0 }} className='test-class'>
+          <header>
             <nav>
               <ul>
                 <li>{SITE_LOGO()}</li>
               </ul>
               <ul>
                 <li>
-                  <button hidden={true} className="outline contrast" onClick={onClose}>×</button>
+                  <button className="outline contrast" onClick={handleClick}>×</button>
                 </li>
               </ul>
             </nav>
@@ -219,9 +225,11 @@ export const FloatingPage = ({ onClose }) => {
         </article>
       ) : (
         <button
-          className="contrast floating-button"
-          onClick={() => setIsExpanded(true)}
-          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+          className="floating-button"
+          onClick={handleClick}
+          style={{ 
+            cursor: isDragging ? 'grabbing' : 'grab',
+          }}
         >
           ⚡
         </button>
