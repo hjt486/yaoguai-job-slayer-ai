@@ -6,6 +6,118 @@ import * as ReactDOM from 'react-dom/client';
 import picoCss from '@picocss/pico/css/pico.css?raw';
 import appCss from '../../App.css?raw';
 
+// Create a unified mounting function for both DEV and Extension modes
+const mountFloatingPage = (onClose, sendResponse = null) => {
+  const hostContainer = document.createElement('div');
+  hostContainer.id = 'yaoguai-host';
+  document.body.appendChild(hostContainer);
+
+  const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
+
+  const injectRootVariables = () => {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const variables = [...rootStyles]
+      .filter(prop => prop.startsWith('--'))
+      .map(prop => `${prop}: ${rootStyles.getPropertyValue(prop)};`)
+      .join('\n');
+
+    const style = document.createElement('style');
+    style.textContent = `:host, :host * { ${variables} }`;
+    shadowRoot.appendChild(style);
+  };
+
+
+  // Modify the style injection to have:
+  const injectStyles = (cssContent, isHostStyles = false) => {
+    const style = document.createElement('style');
+    style.textContent = isHostStyles ? `:host { ${cssContent} }` : cssContent;
+    shadowRoot.appendChild(style);
+  };
+
+  // Then use it like this:
+  // 1. Host-specific styles
+  injectStyles(`
+  all: initial !important;
+  contain: content !important;
+  display: block !important;
+  position: fixed !important;
+  top: 20px !important;
+  right: 20px !important;
+  z-index: 2147483647 !important;
+  isolation: isolate !important;
+  font-family: system-ui, sans-serif !important;
+  width: fit-content !important;
+  height: fit-content !important;
+  transform: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+`, true);
+
+  // 2. Global styles (without :host wrapper)
+  injectRootVariables();
+  injectStyles(picoCss);
+  injectStyles(appCss);
+
+  console.log('Pico CSS Content:', picoCss.slice(0, 100) + '...'); // Log first 100 chars
+
+  // 3. Create React container
+  const container = document.createElement('div');
+  shadowRoot.appendChild(container);
+
+  // 4. Render React component
+  const root = ReactDOM.createRoot(container);
+  root.render(
+    <FloatingPage
+      onClose={() => {
+        root.unmount();
+        hostContainer.remove();
+        if (sendResponse) sendResponse({ success: true });
+        if (onClose) onClose();
+      }}
+    />
+  );
+
+  return hostContainer;
+};
+
+
+// Export for DEV mode
+export const showFloatingPage = (onClose) => {
+  return mountFloatingPage(onClose);
+};
+
+// Use for Extension mode
+const initializeContentScript = () => {
+  console.log('[YaoguaiAI] Content script initializing...');
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    console.log('[YaoguaiAI] Message received in content script:', message);
+    console.log('[YaoguaiAI] Sender:', sender);
+
+    if (message && message.action === 'openFloatingPage') {
+      console.log('[YaoguaiAI] Attempting to mount floating page...');
+      try {
+        const container = mountFloatingPage(null, sendResponse);
+        console.log('[YaoguaiAI] Floating page mounted successfully', container);
+        sendResponse({ success: true });
+      } catch (error) {
+        console.error('[YaoguaiAI] Error mounting floating page:', error);
+        sendResponse({ success: false, error: error.message });
+      }
+    } else {
+      console.log('[YaoguaiAI] Received message with unknown action:', message);
+    }
+    return true;
+  });
+
+  console.log('[YaoguaiAI] Content script initialized and listening for messages');
+};
+
+if (typeof chrome !== 'undefined' && chrome.runtime) {
+  console.log('[YaoguaiAI] Chrome extension environment detected');
+  initializeContentScript();
+}
+
 export const FloatingPage = ({ onClose }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [position, setPosition] = useState({ x: window.innerWidth - 60, y: 20 });
@@ -53,12 +165,15 @@ export const FloatingPage = ({ onClose }) => {
       id="yaoguai-floating-container"
       className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
       style={{
+        // position: 'absolute',
+        // left: position.x + 'px',
+        // top: position.y + 'px',
         cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab')
       }}
       onMouseDown={handleMouseDown}
     >
       {isExpanded ? (
-        <article style={{ margin: 0 }}>
+        <article style={{ margin: 0 }} className='test-class '>
           <header onClick={() => setIsExpanded(false)}>
             <nav>
               <ul>
@@ -66,13 +181,13 @@ export const FloatingPage = ({ onClose }) => {
               </ul>
               <ul>
                 <li>
-                  <button hidden='true' className="outline contrast" onClick={onClose}>×</button>
+                  <button hidden={true} className="outline contrast" onClick={onClose}>×</button>
                 </li>
               </ul>
             </nav>
           </header>
           <main>
-            <details>
+            <details aria-busy="true">
               <summary>Auto Fill Options</summary>
               <p>This is the floating page for auto-filling.</p>
             </details>
@@ -90,100 +205,5 @@ export const FloatingPage = ({ onClose }) => {
     </div>
   );
 };
-
-// Create a unified mounting function for both DEV and Extension modes
-const mountFloatingPage = (onClose, sendResponse = null) => {
-  const hostContainer = document.createElement('div');
-  hostContainer.id = 'yaoguai-host';
-  document.body.appendChild(hostContainer);
-
-  const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
-
-  // 1. Create proper style elements
-  const injectStyles = (cssContent) => {
-    const style = document.createElement('style');
-    style.textContent = cssContent;
-    shadowRoot.appendChild(style);
-  };
-
-  // 2. Inject styles in correct order
-  injectStyles(`
-    :host {
-      all: initial !important;
-      contain: content !important;
-      display: block !important;
-      position: fixed !important;
-      top: 20px !important;
-      right: 20px !important;
-      z-index: 2147483647 !important;
-      isolation: isolate !important;
-      font-family: system-ui, sans-serif !important;
-      width: fit-content !important;
-      height: fit-content !important;
-      transform: none !important; /* Add this line */
-      margin: 0 !important;
-      padding: 0 !important;
-    }
-  `);
-
-  injectStyles(picoCss);  // Imported Pico CSS
-  injectStyles(appCss);   // Imported App CSS
-
-  // 3. Create React container
-  const container = document.createElement('div');
-  shadowRoot.appendChild(container);
-
-  // 4. Render React component
-  const root = ReactDOM.createRoot(container);
-  root.render(
-    <FloatingPage
-      onClose={() => {
-        root.unmount();
-        hostContainer.remove();
-        if (sendResponse) sendResponse({ success: true });
-        if (onClose) onClose();
-      }}
-    />
-  );
-
-  return hostContainer;
-};
-
-// Export for DEV mode
-export const showFloatingPage = (onClose) => {
-  return mountFloatingPage(onClose);
-};
-
-// Use for Extension mode
-const initializeContentScript = () => {
-  console.log('[YaoguaiAI] Content script initializing...');
-  
-  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-    console.log('[YaoguaiAI] Message received in content script:', message);
-    console.log('[YaoguaiAI] Sender:', sender);
-    
-    if (message && message.action === 'openFloatingPage') {
-      console.log('[YaoguaiAI] Attempting to mount floating page...');
-      try {
-        const container = mountFloatingPage(null, sendResponse);
-        console.log('[YaoguaiAI] Floating page mounted successfully', container);
-        sendResponse({ success: true });
-      } catch (error) {
-        console.error('[YaoguaiAI] Error mounting floating page:', error);
-        sendResponse({ success: false, error: error.message });
-      }
-    } else {
-      console.log('[YaoguaiAI] Received message with unknown action:', message);
-    }
-    return true;
-  });
-
-  console.log('[YaoguaiAI] Content script initialized and listening for messages');
-};
-
-if (typeof chrome !== 'undefined' && chrome.runtime) {
-  console.log('[YaoguaiAI] Chrome extension environment detected');
-  initializeContentScript();
-}
 
 export default FloatingPage;

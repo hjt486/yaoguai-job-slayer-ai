@@ -710,3 +710,9 @@ nav {
 /* ====================================================================== */
 /* Resume Preview Style Ends */
 /* ====================================================================== */
+
+/* DEBUG Style Starts */
+.test-class {
+  border: 2px solid green !important;
+}
+/* DEBUG Style Ends */
