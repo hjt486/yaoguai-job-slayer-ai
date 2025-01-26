@@ -36,38 +36,11 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
       shadowRoot.appendChild(style);
     };
 
-    const injectRootVariables = () => {
-      const rootStyles = getComputedStyle(document.documentElement);
-      const variables = [...rootStyles]
-        .filter(prop => prop.startsWith('--'))
-        .map(prop => `${prop}: ${rootStyles.getPropertyValue(prop)};`)
-        .join('\n');
-
-      const style = document.createElement('style');
-      style.textContent = `:host, :host * { ${variables} }`;
-      shadowRoot.appendChild(style);
-    };
-
-    injectStyles(`
-    :host {
-        position: fixed !important;
-        top: 20px !important;
-        right: 20px !important;
-        z-index: 2147483647 !important;
-        contain: strict !important;
-        overflow: visible !important;
-        isolation: isolate !important;
-      }
-    `, true);
-
-
     // Modify how Pico CSS is injected
     injectStyles(`
-  ${picoCss
+      ${picoCss
         .replace(/:root/g, ':host')
-        .replace(/html/g, ':host')
-      }
-  `);
+      }`);
     injectStyles(appCss);
 
     // Create React container
@@ -79,10 +52,9 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
       ${picoCss}
       ${appCss}
       #yaoguai-host { 
-        z-index: 2147483647 !important;
-        contain: content !important;
-      }
-    `;
+      z-index: 2147483647 !important;
+      contain: content !important;
+      }`
     document.head.appendChild(styleTag);
     container = hostContainer;
   }
@@ -197,8 +169,6 @@ export const FloatingPage = ({ onClose }) => {
       className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
       style={{
         cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab'),
-        zIndex: 2147483647,
-        background: 'white',
       }}
       onMouseDown={handleMouseDown}
     >
@@ -225,14 +195,12 @@ export const FloatingPage = ({ onClose }) => {
         </article>
       ) : (
         <button
-          className="floating-button"
+          className="floating-button outline"
           onClick={handleClick}
-          style={{ 
+          style={{
             cursor: isDragging ? 'grabbing' : 'grab',
           }}
-        >
-          ⚡
-        </button>
+        >{SITE_LOGO()}</button>
       )}
     </div>
   );

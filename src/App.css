@@ -535,8 +535,9 @@ nav {
 /* ====================================================================== */
 
 .floating-button {
-  width: 40px !important;
-  height: 40px !important;
+  width: 120px !important;
+  height: 70px !important;
+
 }
 
 /* Replace floating-container styles with: */
@@ -553,8 +554,8 @@ nav {
 }
 
 .floating-container.collapsed {
-  width: 55px !important;
-  height: 50px !important;
+  width: 130px !important;
+  height: 80px !important;
 }
 
 .floating-container.expanded {
