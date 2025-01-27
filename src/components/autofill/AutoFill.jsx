@@ -21,37 +21,118 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
 
   let container;
 
-  if (isExtension()) {
+  // In the mountFloatingPage function's extension block:
+  if (true) {
     const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
 
-    // Shadow DOM specific styling
+    // 1. Create container element first
+    container = document.createElement('div');
+    container.className = 'pico-scope';
+    shadowRoot.appendChild(container);
+
+    // 2. Add CSS reset with proper inheritance
     shadowRoot.appendChild(
       Object.assign(document.createElement('style'), {
         textContent: `
-          :host {
-            position: fixed !important;
-            top: 20px !important;
-            right: 20px !important;
-            z-index: 2147483647 !important;
-            contain: content !important;
-            isolation: isolate !important;
-            width: fit-content !important;
-            height: fit-content !important;
-          }`
+        :host {
+          position: fixed !important;
+          top: 20px !important;
+          right: 20px !important;
+          z-index: 2147483647 !important;
+          contain: content !important;
+          isolation: isolate !important;
+          width: fit-content !important;
+          height: fit-content !important;
+        }
+
+        div.pico-scope {
+
+          display: block;
+          font-family: inherit;
+          line-height: 1.5;
+          color: inherit;
+          background: var(--yaoguai-pico-background-color, #ffffff);
+        }
+
+        div.pico-scope * {
+          box-sizing: border-box;
+          font-family: inherit;
+          line-height: inherit;
+        }
+      `
       })
     );
 
-    // Simplified style injection
-    const injectStyles = css => shadowRoot.appendChild(
-      Object.assign(document.createElement('style'), { textContent: css })
-    );
+    // 3. Modify Pico CSS with proper scoping
+    const modifiedPico = picoCss
+      .replace(/:root\b/g, 'div.pico-scope')
+      .replace(/html|body/g, 'div.pico-scope')
+      .replace(/--pico-/g, '--yaoguai-pico-')
+      .replace(/var\(--pico-/g, 'var(--yaoguai-pico-');
 
-    // Inject modified CSS
-    injectStyles(picoCss.replace(/:root/g, ':host'));
-    injectStyles(appCss);
+    // 4. Properly scope App.css with more specific selectors
+    const scopedAppCss = appCss
+      // Handle class selectors
+      .replace(/\.([\w-]+)/g, '.pico-scope .$1')
+      // Handle ID selectors
+      .replace(/#([\w-]+)/g, '.pico-scope #$1')
+      // Handle element selectors but skip @media and keyframes
+      .replace(/([^@{}\s,])([^{},]*){/g, '.pico-scope $1$2{')
+      // Fix double scoping
+      .replace(/\.pico-scope \.pico-scope/g, '.pico-scope')
+      // Handle media queries
+      .replace(/@media/g, '@media')
+      // Replace Pico variables
+      .replace(/--pico-/g, '--yaoguai-pico-')
+      .replace(/var\(--pico-/g, 'var(--yaoguai-pico-');
 
-    container = document.createElement('div');
-    shadowRoot.appendChild(container);
+    // Add floating container specific styles
+    const containerStyles = `
+      .pico-scope .floating-container {
+        background: white !important;
+        border-radius: 8px !important;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+        padding: 1rem !important;
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+      }
+
+      .pico-scope .floating-container.expanded {
+        width: 300px !important;
+        min-height: 200px !important;
+      }
+
+      .pico-scope .floating-button {
+        width: 40px !important;
+        height: 40px !important;
+        padding: 8px !important;
+        border-radius: 50% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        background: white !important;
+        border: 1px solid #ddd !important;
+      }
+
+      .pico-scope article {
+        margin: 0 !important;
+        padding: 1rem !important;
+      }
+    `;
+
+    // 5. Create style elements with proper order
+    const styles = [
+      modifiedPico,
+      scopedAppCss,
+      containerStyles
+    ];
+
+    styles.forEach(css => {
+      shadowRoot.appendChild(
+        Object.assign(document.createElement('style'), { textContent: css })
+      );
+    });
   } else {
     // DEV mode styling
     document.head.appendChild(
@@ -175,44 +256,69 @@ export const FloatingPage = ({ onClose }) => {
   }, [isDragging]);
 
   return (
-    <div
-      id="yaoguai-floating-container"
-      className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
-      style={{
-        cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab'),
-      }}
-      onMouseDown={handleMouseDown}
+    <div className="pico-scope"
     >
-      {isExpanded ? (
-        <article style={{ margin: 0 }} className='test-class'>
-          <header>
-            <nav>
-              <ul>
-                <li>{SITE_LOGO()}</li>
-              </ul>
-              <ul>
-                <li>
-                  <button className="outline contrast" onClick={handleClick}>×</button>
-                </li>
-              </ul>
-            </nav>
-          </header>
-          <main>
-            <details aria-busy="true">
-              <summary>Auto Fill Options</summary>
-              <p>This is the floating page for auto-filling.</p>
-            </details>
-          </main>
-        </article>
-      ) : (
-        <button
-          className="floating-button outline"
-          onClick={handleClick}
-          style={{
-            cursor: isDragging ? 'grabbing' : 'grab',
-          }}
-        >{SITE_LOGO()}</button>
-      )}
+      <div
+        id="yaoguai-floating-container"
+        className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
+        style={{
+          cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab'),
+        }}
+        onMouseDown={handleMouseDown}
+      >
+        {isExpanded ? (
+          <article style={{ margin: 0 }} className='test-class'>
+            <header>
+              <nav>
+                <ul>
+                  <li>{SITE_LOGO()}</li>
+                </ul>
+                <ul>
+                  <li>
+                    <button className="outline contrast" onClick={handleClick}>×</button>
+                  </li>
+                </ul>
+              </nav>
+            </header>
+            <main>
+              <fieldset>
+                <textarea
+                  name="bio"
+                  placeholder="Write a professional short bio..."
+                  aria-label="Professional short bio"
+                >
+                </textarea>
+                <label>
+                  Brightness
+                  <input type="range" />
+                </label>
+
+                <label>
+                  <input name="terms" type="checkbox" role="switch" />
+                  I agree to the Terms
+                </label>
+                <label>
+                  <input name="opt-in" type="checkbox" role="switch" checked />
+                  Receive news and offers
+                </label>
+              </fieldset>
+              <progress />
+              <details aria-busy="true">
+                <summary>Auto Fill Options</summary>
+                <p>This is the floating page for auto-filling.</p>
+              </details>
+            </main>
+          </article>
+        ) : (
+          <button
+            className="floating-button outline"
+            onClick={handleClick}
+            style={{
+              cursor: isDragging ? 'grabbing' : 'grab',
+            }}
+          >{SITE_LOGO()}</button>
+        )}
+      </div>
     </div>
   );
 };

@@ -563,8 +563,8 @@ nav {
   min-height: 300px !important;
 }
 
-#yaoguai-host {
-  all: initial !important;
+#host {
+  all: intial !important;
   position: fixed !important;
   top: 20px !important;
   right: 20px !important;
