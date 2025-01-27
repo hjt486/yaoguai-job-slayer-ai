@@ -17,35 +17,6 @@ import { generatePDF, downloadStoredPDF } from '../common/pdfUtils';
 import { LoadingButton } from '../common/LoadingButton';
 import moment from 'moment';
 
-// Add storageHelper near the top of the file
-const isExtension = typeof chrome !== 'undefined' && chrome.runtime;
-
-const storageHelper = {
-  async get(key) {
-    if (isExtension) {
-      const result = await chrome.storage.local.get(key);
-      return result[key];
-    }
-    return localStorage.getItem(key);
-  },
-
-  async set(key, value) {
-    if (isExtension) {
-      await chrome.storage.local.set({ [key]: value });
-    } else {
-      localStorage.setItem(key, value);
-    }
-  },
-
-  async remove(key) {
-    if (isExtension) {
-      await chrome.storage.local.remove(key);
-    } else {
-      localStorage.removeItem(key);
-    }
-  }
-};
-
 // Update ResumeSection component
 export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, hideEdit }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -174,10 +145,10 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
         // Get the formatted text that's displayed
         const formattedValue = event.currentTarget.textContent;
         navigator.clipboard.writeText(formattedValue);
-
+        
         const target = event.currentTarget;
         const originalTooltip = target.getAttribute('data-tooltip');
-
+        
         target.setAttribute('data-tooltip', 'Copied!');
         setTimeout(() => {
           target.setAttribute('data-tooltip', originalTooltip || 'Click to copy');
@@ -211,8 +182,8 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
                     </button>
                   </div>
                 ) : (
-                  <span
-                    onClick={(e) => handleCopy(skill, e)}
+                  <span 
+                    onClick={(e) => handleCopy(skill, e)} 
                     style={{ cursor: 'pointer' }}
                     data-tooltip="Click to copy"
                   >
@@ -252,17 +223,17 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
                     renderInput(key, value, index)
                   ) : (
                     // In the renderContent function, update the span elements
-                    <span
-                      onClick={(e) => handleCopy(value, e)}
-                      style={{
-                        whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal',
-                        cursor: 'pointer',
-                        textDecoration: 'none'  // Add this line
-                      }}
-                      data-tooltip="Click to copy"
-                    >
-                      {getFormattedDate(key, value)}
-                    </span>
+                        <span 
+                          onClick={(e) => handleCopy(value, e)}
+                          style={{ 
+                            whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal',
+                            cursor: 'pointer',
+                            textDecoration: 'none'  // Add this line
+                          }}
+                          data-tooltip="Click to copy"
+                        >
+                          {getFormattedDate(key, value)}
+                        </span>
                   )}
                 </div>
               ))}
@@ -285,9 +256,9 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
           {isEditing ? (
             renderInput(key, value)
           ) : (
-            <span
+            <span 
               onClick={(e) => handleCopy(value, e)}  // Add event parameter here
-              style={{
+              style={{ 
                 whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal',
                 cursor: 'pointer'
               }}
@@ -314,8 +285,8 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
           }}
         />
       ) : (
-        <p
-          className="pre-wrap"
+        <p 
+          className="pre-wrap" 
           onClick={(e) => handleCopy(data, e)}
           style={{ cursor: 'pointer' }}
           data-tooltip="Click to copy"
@@ -381,121 +352,97 @@ const Resume = () => {
   useEffect(() => {
     // In the loadCurrentProfile function within useEffect
     const ensureProfileCompatibility = (profile) => {
-      const updatedProfile = { ...profile };
-      let needsUpdate = false;
-
-      // Check all sections from DEFAULT_PROFILE_STRUCTURE
-      Object.entries(DEFAULT_PROFILE_STRUCTURE).forEach(([section, defaultValue]) => {
-        if (!updatedProfile[section]) {
-          updatedProfile[section] = JSON.parse(JSON.stringify(defaultValue));
-          needsUpdate = true;
-        } else if (typeof defaultValue === 'object' && !Array.isArray(defaultValue)) {
-          // Check nested fields in objects
-          Object.keys(defaultValue).forEach(field => {
-            if (!(field in updatedProfile[section])) {
-              updatedProfile[section][field] = defaultValue[field];
-              needsUpdate = true;
-            }
-          });
-        }
-      });
-
-      return needsUpdate ? updatedProfile : profile;
-    };
-
-    // Update the loadCurrentProfile function
-    const loadCurrentProfile = async () => {
-      const currentUser = authService.getCurrentUser();
-      let savedProfile;
-      
-      if (isExtension) {
-        const result = await chrome.storage.local.get('currentProfile');
-        savedProfile = result.currentProfile;
-      } else {
-        savedProfile = localStorage.getItem('currentProfile');
-      }
-
-      if (savedProfile) {
-        const parsedProfile = typeof savedProfile === 'string' ? JSON.parse(savedProfile) : savedProfile;
-        let storedProfiles;
-        
-        if (isExtension) {
-          const result = await chrome.storage.local.get(['userProfiles']);
-          storedProfiles = result.userProfiles || {};
-        } else {
-          storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-        }
-
-        if (!currentUser || !storedProfiles[currentUser.id]?.[parsedProfile.id]) {
-          if (isExtension) {
-            await chrome.storage.local.remove('currentProfile');
-          } else {
-            localStorage.removeItem('currentProfile');
-          }
-          setProfile(null);
-          setPdfGenerated(false);
-          setCoverLetterGenerated(false);
-          return;
-        }
-
-        // Add compatibility check
-        const compatibleProfile = ensureProfileCompatibility(parsedProfile);
-        if (compatibleProfile !== parsedProfile) {
-          storedProfiles[currentUser.id][parsedProfile.id] = compatibleProfile;
-          if (isExtension) {
-            await chrome.storage.local.set({
-              userProfiles: storedProfiles,
-              currentProfile: compatibleProfile
+        const updatedProfile = { ...profile };
+        let needsUpdate = false;
+    
+        // Check all sections from DEFAULT_PROFILE_STRUCTURE
+        Object.entries(DEFAULT_PROFILE_STRUCTURE).forEach(([section, defaultValue]) => {
+          if (!updatedProfile[section]) {
+            updatedProfile[section] = JSON.parse(JSON.stringify(defaultValue));
+            needsUpdate = true;
+          } else if (typeof defaultValue === 'object' && !Array.isArray(defaultValue)) {
+            // Check nested fields in objects
+            Object.keys(defaultValue).forEach(field => {
+              if (!(field in updatedProfile[section])) {
+                updatedProfile[section][field] = defaultValue[field];
+                needsUpdate = true;
+              }
             });
-          } else {
+          }
+        });
+    
+        return needsUpdate ? updatedProfile : profile;
+      };
+    
+      // Update the loadCurrentProfile function
+      const loadCurrentProfile = () => {
+        const currentUser = authService.getCurrentUser();
+        const savedProfile = localStorage.getItem('currentProfile');
+    
+        if (savedProfile) {
+          const parsedProfile = JSON.parse(savedProfile);
+          const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    
+          if (!currentUser || !storedProfiles[currentUser.id]?.[parsedProfile.id]) {
+            localStorage.removeItem('currentProfile');
+            setProfile(null);
+            setPdfGenerated(false);
+            setCoverLetterGenerated(false);
+            return;
+          }
+    
+          // Add compatibility check
+          const compatibleProfile = ensureProfileCompatibility(parsedProfile);
+          if (compatibleProfile !== parsedProfile) {
+            // Update storage if profile was modified
+            storedProfiles[currentUser.id][parsedProfile.id] = compatibleProfile;
             localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
             localStorage.setItem('currentProfile', JSON.stringify(compatibleProfile));
           }
+    
+          setProfile(compatibleProfile);
+          // Check PDF statuses
+          const pdfData = localStorage.getItem(`generatedPDF_${parsedProfile.id}`);
+          const coverLetterData = localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`);
+          console.log("localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`)", localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`))
+          setPdfGenerated(!!pdfData);
+          setCoverLetterGenerated(coverLetterData === 'true');
+        } else {
+          setProfile(null);
+          setPdfGenerated(false);
+          setCoverLetterGenerated(false);
         }
-
-        setProfile(compatibleProfile);
-        // Check PDF statuses
-        const pdfData = await storageHelper.get(`generatedPDF_${parsedProfile.id}`);
-        const coverLetterData = await storageHelper.get(`generatedPDF_${parsedProfile.id}_coverLetter`);
-        setPdfGenerated(!!pdfData);
-        setCoverLetterGenerated(coverLetterData === 'true');
-      } else {
-        setProfile(null);
-        setPdfGenerated(false);
-        setCoverLetterGenerated(false);
-      }
-    };
-
-    loadCurrentProfile();
-
-    const handleProfileChange = async (e) => {
-      const newProfile = e.detail.profile;
-      setProfile(newProfile);
-
-      if (newProfile) {
-        const pdfData = await storageHelper.get(`generatedPDF_${newProfile.id}`);
-        const coverLetterData = await storageHelper.get(`generatedPDF_${newProfile.id}_coverLetter`);
-        setPdfGenerated(!!pdfData);
-        setCoverLetterGenerated(false);
-      }
-    };
-
-
-    // Add event listener for authentication changes
-    const handleAuthChange = () => {
+      };
+    
       loadCurrentProfile();
-    };
-
-    window.addEventListener('profileLoaded', handleProfileChange);
-    window.addEventListener('storage', loadCurrentProfile);
-    window.addEventListener('authChange', handleAuthChange); // Listen for auth changes via custom event
-
-    return () => {
-      window.removeEventListener('profileLoaded', handleProfileChange);
-      window.removeEventListener('storage', loadCurrentProfile);
-      window.removeEventListener('authChange', handleAuthChange);
-    };
-  }, []);
+    
+      const handleProfileChange = (e) => {
+        const newProfile = e.detail.profile;
+        setProfile(newProfile);
+    
+        if (newProfile) {
+          const pdfData = localStorage.getItem(`generatedPDF_${newProfile.id}`);
+          const coverLetterData = localStorage.getItem(`generatedPDF_${newProfile.id}_coverLetter`);
+          setPdfGenerated(!!pdfData);
+          setCoverLetterGenerated(False);
+        }
+      };
+    
+      // Add event listener for authentication changes
+      const handleAuthChange = () => {
+        loadCurrentProfile();
+      };
+    
+      window.addEventListener('profileLoaded', handleProfileChange);
+      window.addEventListener('storage', loadCurrentProfile);
+      authService.subscribe(handleAuthChange); // Assuming authService provides a subscribe method
+    
+      return () => {
+        window.removeEventListener('profileLoaded', handleProfileChange);
+        window.removeEventListener('storage', loadCurrentProfile);
+        authService.unsubscribe(handleAuthChange);
+      };
+    }, []);
 
   // Preview effect - keep only this one, remove the duplicate at the bottom
   useEffect(() => {
@@ -637,57 +584,8 @@ const Resume = () => {
     });
   };
 
-  // Update the resume download handler
-  const handleDownloadLoadedResume = async (profileId) => {
-    const resumeKey = `resume_${profileId}`;
-    const storedResume = await storageHelper.get(resumeKey);
-    if (!storedResume) {
-      console.error('No resume file found for this profile');
-      return;
-    }
-
-    const parsedResume = typeof storedResume === 'string' ? JSON.parse(storedResume) : storedResume;
-    const link = document.createElement('a');
-    link.href = parsedResume.content;
-    link.download = parsedResume.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
-
-  // Update the getFormattedDate function
-  const getFormattedDate = async (key, value) => {
-    if (!value) return '';
-    if (key === 'resumeName') {
-      const resumeKey = `resume_${profile.id}`;
-      const storedResume = await storageHelper.get(resumeKey);
-      const parsedResume = typeof storedResume === 'string' ? JSON.parse(storedResume) : storedResume;
-
-      if (parsedResume) {
-        return (
-          <a href="#" onClick={(e) => {
-            e.preventDefault();
-            handleDownloadLoadedResume(profile.id);
-          }}
-            style={{ textDecoration: 'underline' }}
-          >
-            {value || parsedResume.name}
-          </a>
-        );
-      }
-      return <small>{value || 'No resume uploaded'}</small>;
-    }
-    if (DATE_TIME_FIELDS.includes(key)) {
-      return formatDateTime(value);
-    }
-    if (DATE_FIELDS.includes(key)) {
-      return formatDate(value);
-    }
-    return value;
-  };
-
-  // Update handleSectionSave
-  const handleSectionSave = async () => {
+  const handleSectionSave = () => {
+    // Save to localStorage
     const updatedProfile = {
       ...profile,
       metadata: {
@@ -697,29 +595,12 @@ const Resume = () => {
     };
 
     const currentUser = authService.getCurrentUser();
+    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
+    storedProfiles[currentUser.id][profile.id] = updatedProfile;
 
-    if (isExtension) {
-      try {
-        const result = await chrome.storage.local.get(['userProfiles']);
-        const storedProfiles = result.userProfiles || {};
-        storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
-        storedProfiles[currentUser.id][profile.id] = updatedProfile;
-
-        await chrome.storage.local.set({
-          userProfiles: storedProfiles,
-          currentProfile: JSON.stringify(updatedProfile)
-        });
-      } catch (error) {
-        console.error('[Debug] Error saving profile:', error);
-      }
-    } else {
-      const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-      storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
-      storedProfiles[currentUser.id][profile.id] = updatedProfile;
-
-      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
-      localStorage.setItem('currentProfile', JSON.stringify(updatedProfile));
-    }
+    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+    localStorage.setItem('currentProfile', JSON.stringify(updatedProfile));
 
     window.dispatchEvent(new CustomEvent('profileUpdated', {
       detail: { profile: updatedProfile }
@@ -830,7 +711,7 @@ const Resume = () => {
             onSave={handleSectionSave}
           />
         ))}
-
+      
       <h3 className="application-info-header">Application Information</h3>
       {Object.entries(LABELS.sections)
         .filter(([section]) => APPLICATION_ONLY_SECTIONS.includes(section))
@@ -845,7 +726,7 @@ const Resume = () => {
             onSave={handleSectionSave}
           />
         ))}
-
+      
     </article>
   );
 };

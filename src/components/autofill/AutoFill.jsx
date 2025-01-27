@@ -219,25 +219,10 @@ export const FloatingPage = ({ onClose }) => {
 
   // Add profile loading effect
   useEffect(() => {
-    const isExtension = typeof chrome !== 'undefined' && chrome.runtime;
-    
-    const loadCurrentProfile = async () => {
-      console.log('[Debug] Loading profile...');
-      if (isExtension) {
-        try {
-          const result = await chrome.storage.local.get(['currentProfile']);
-          if (result.currentProfile) {
-            console.log('[Debug] Profile from chrome.storage:', result.currentProfile);
-            setProfile(JSON.parse(result.currentProfile));
-          }
-        } catch (error) {
-          console.error('[Debug] Chrome storage error:', error);
-        }
-      } else {
-        const savedProfile = localStorage.getItem('currentProfile');
-        if (savedProfile) {
-          setProfile(JSON.parse(savedProfile));
-        }
+    const loadCurrentProfile = () => {
+      const savedProfile = localStorage.getItem('currentProfile');
+      if (savedProfile) {
+        setProfile(JSON.parse(savedProfile));
       }
     };
 
@@ -245,59 +230,31 @@ export const FloatingPage = ({ onClose }) => {
       setProfile(e.detail.profile);
     };
 
-    const handleStorageChange = isExtension ? 
-      (changes) => {
-        if (changes.currentProfile) {
-          loadCurrentProfile();
-        }
-      } :
-      (e) => {
-        if (e.key === 'currentProfile' || e.key?.startsWith('userProfiles')) {
-          loadCurrentProfile();
-        }
-      };
+    const handleStorageChange = (e) => {
+      if (e.key === 'currentProfile' || e.key?.startsWith('userProfiles')) {
+        loadCurrentProfile();
+      }
+    };
 
     loadCurrentProfile();
-
-    if (isExtension) {
-      chrome.storage.onChanged.addListener(handleStorageChange);
-    } else {
-      window.addEventListener('storage', handleStorageChange);
-      window.addEventListener('profileUpdated', handleProfileUpdate);
-      window.addEventListener('profileLoaded', handleProfileUpdate);
-    }
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('profileLoaded', handleProfileUpdate);
 
     return () => {
-      if (isExtension) {
-        chrome.storage.onChanged.removeListener(handleStorageChange);
-      } else {
-        window.removeEventListener('storage', handleStorageChange);
-        window.removeEventListener('profileUpdated', handleProfileUpdate);
-        window.removeEventListener('profileLoaded', handleProfileUpdate);
-      }
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('profileLoaded', handleProfileUpdate);
     };
   }, []);
 
-  // Add at the top with other imports
-  const storageHelper = {
-    async get(key) {
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        const result = await chrome.storage.local.get(key);
-        return result[key];
-      }
-      return localStorage.getItem(key);
-    },
-  
-    async set(key, value) {
-      if (typeof chrome !== 'undefined' && chrome.runtime) {
-        await chrome.storage.local.set({ [key]: value });
-      } else {
-        localStorage.setItem(key, value);
-      }
-    }
+  const handleSectionEdit = (section, updates) => {
+    setProfile(prevProfile => {
+      // ... copy the handleSectionEdit function from Resume.jsx ...
+    });
   };
 
-  const handleSectionSave = async () => {
+  const handleSectionSave = () => {
     const updatedProfile = {
       ...profile,
       metadata: {
@@ -305,27 +262,18 @@ export const FloatingPage = ({ onClose }) => {
         lastModified: getCurrentISOString()
       }
     };
-  
-    const currentUser = await authService.getCurrentUser();
-    const storedProfiles = JSON.parse(await storageHelper.get('userProfiles') || '{}');
-    
+
+    const currentUser = authService.getCurrentUser();
+    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
     storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
     storedProfiles[currentUser.id][profile.id] = updatedProfile;
-    
-    await storageHelper.set('userProfiles', JSON.stringify(storedProfiles));
-    await storageHelper.set('currentProfile', JSON.stringify(updatedProfile));
-    
-    if (!isExtension) {
-      window.dispatchEvent(new CustomEvent('profileUpdated', {
-        detail: { profile: updatedProfile }
-      }));
-    }
-  };
 
-  const handleSectionEdit = (section, updates) => {
-    setProfile(prevProfile => {
-      // ... copy the handleSectionEdit function from Resume.jsx ...
-    });
+    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+    localStorage.setItem('currentProfile', JSON.stringify(updatedProfile));
+
+    window.dispatchEvent(new CustomEvent('profileUpdated', {
+      detail: { profile: updatedProfile }
+    }));
   };
 
   const handleMouseDown = (e) => {

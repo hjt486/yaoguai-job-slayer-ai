@@ -2,27 +2,6 @@ import { jsPDF } from 'jspdf';
 import { formatDate } from './dateUtils';
 import moment from 'moment';
 
-const isExtension = typeof chrome !== 'undefined' && chrome.runtime;
-
-const storageHelper = {
-  async get(key) {
-    if (isExtension) {
-      const result = await chrome.storage.local.get(key);
-      return result[key];
-    }
-    return localStorage.getItem(key);
-  },
-
-  async set(key, value) {
-    if (isExtension) {
-      await chrome.storage.local.set({ [key]: value });
-    } else {
-      localStorage.setItem(key, value);
-    }
-  }
-};
-
-// Update the generatePDF function
 export const generatePDF = async (profile, fileName, profileId, isCoverLetter = false) => {
   try {
     const pdf = new jsPDF({
@@ -281,15 +260,18 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
 
     // Store PDF in localStorage with profile-specific keys
     const pdfData = pdf.output('dataurlstring');
-    await storageHelper.set(`generatedPDF_${profile.id || profileId}`, pdfData);
-    await storageHelper.set(`pdfTimestamp_${profile.id || profileId}`, new Date().toISOString());
-    await storageHelper.set(`pdfFileName_${profile.id || profileId}`, fileName);
+    localStorage.setItem(`generatedPDF_${profile.id || profileId}`, pdfData);
+    localStorage.setItem(`pdfTimestamp_${profile.id || profileId}`, new Date().toISOString());
+    localStorage.setItem(`pdfFileName_${profile.id || profileId}`, fileName);
 
+    // Store PDF data and filename separately
     const pdfKey = isCoverLetter ? `coverLetter_${profileId}` : `generatedPDF_${profileId}`;
     const fileNameKey = isCoverLetter ? `coverLetterFileName_${profileId}` : `pdfFileName_${profileId}`;
 
-    await storageHelper.set(pdfKey, pdfData);
-    await storageHelper.set(fileNameKey, fileName);
+    // Store the base64 PDF data
+    localStorage.setItem(pdfKey, pdfData);
+    // Store the filename separately
+    localStorage.setItem(fileNameKey, fileName);
 
     return true;
   } catch (error) {
@@ -298,28 +280,20 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
   }
 };
 
-// Update the downloadStoredPDF function
-export const downloadStoredPDF = async (profileId, isCoverLetter = false) => {
+export const downloadStoredPDF = (profileId, isCoverLetter = false) => {
   const pdfKey = isCoverLetter ? `coverLetter_${profileId}` : `generatedPDF_${profileId}`;
   const fileNameKey = isCoverLetter ? `coverLetterFileName_${profileId}` : `pdfFileName_${profileId}`;
 
-  try {
-    const [pdfData, fileName] = await Promise.all([
-      storageHelper.get(pdfKey),
-      storageHelper.get(fileNameKey)
-    ]);
+  const pdfData = localStorage.getItem(pdfKey);
+  const fileName = localStorage.getItem(fileNameKey);
 
-    if (!pdfData || !fileName) return false;
+  if (!pdfData || !fileName) return false;
 
-    const link = document.createElement('a');
-    link.href = pdfData;
-    link.download = fileName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    return true;
-  } catch (error) {
-    console.error('Error downloading PDF:', error);
-    return false;
-  }
+  const link = document.createElement('a');
+  link.href = pdfData;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  return true;
 };

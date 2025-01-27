@@ -4,45 +4,15 @@ import Register from './Register';
 import { authService } from '../../services/authService';
 
 const LAST_EMAIL_KEY = 'lastUsedEmail';
-const isExtension = typeof chrome !== 'undefined' && chrome.runtime;
-
-const storageHelper = {
-  async get(key) {
-    if (isExtension) {
-      const result = await chrome.storage.local.get(key);
-      return result[key];
-    }
-    return localStorage.getItem(key);
-  },
-
-  async set(key, value) {
-    if (isExtension) {
-      await chrome.storage.local.set({ [key]: value });
-    } else {
-      localStorage.setItem(key, value);
-    }
-  }
-};
 
 const LoginForm = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [loginForm, setLoginForm] = useState({ 
-    email: '', 
+    email: localStorage.getItem(LAST_EMAIL_KEY) || '', 
     password: '' 
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-
-  // Load last used email on component mount
-  useEffect(() => {
-    const loadLastEmail = async () => {
-      const lastEmail = await storageHelper.get(LAST_EMAIL_KEY);
-      if (lastEmail) {
-        setLoginForm(prev => ({ ...prev, email: lastEmail }));
-      }
-    };
-    loadLastEmail();
-  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -50,7 +20,9 @@ const LoginForm = ({ onLogin }) => {
     setIsLoading(true);
 
     try {
-      await storageHelper.set(LAST_EMAIL_KEY, loginForm.email);
+      // Save email before attempting login
+      localStorage.setItem(LAST_EMAIL_KEY, loginForm.email);
+      
       const response = await authService.login(loginForm);
       console.log('Login successful:', response);
       onLogin(response);
@@ -65,13 +37,14 @@ const LoginForm = ({ onLogin }) => {
     try {
       const response = await authService.register(registerData);
       console.log('Registration successful:', response);
+      // Update login form and return to login page
       setLoginForm({
         email: response.email,
         password: ''
       });
-      await storageHelper.set(LAST_EMAIL_KEY, response.email);
+      localStorage.setItem(LAST_EMAIL_KEY, response.email);
     } catch (error) {
-      throw error;
+      throw error; // Propagate error to LoadingButton
     }
   };
 
