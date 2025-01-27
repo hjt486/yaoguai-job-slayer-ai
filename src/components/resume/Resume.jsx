@@ -16,6 +16,7 @@ import { formatDateTime, formatDate, getCurrentISOString } from '../common/dateU
 import { generatePDF, downloadStoredPDF } from '../common/pdfUtils';
 import { LoadingButton } from '../common/LoadingButton';
 import moment from 'moment';
+import { storageService } from '../../services/storageService';
 
 // Update ResumeSection component
 export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, hideEdit }) => {
@@ -41,7 +42,7 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
     if (!value) return '';
     if (key === 'resumeName') {
       const resumeKey = `resume_${profile.id}`;
-      const storedResume = JSON.parse(localStorage.getItem(resumeKey));
+      const storedResume = JSON.parse(storageService.get(resumeKey));
       if (storedResume) {
         return (
           <a href="#" onClick={(e) => {
@@ -68,7 +69,7 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
   // Update download handler
   const handleDownloadLoadedResume = (profileId) => {
     const resumeKey = `resume_${profileId}`;
-    const storedResume = JSON.parse(localStorage.getItem(resumeKey));
+    const storedResume = JSON.parse(storageService.get(resumeKey));
     if (!storedResume) {
       console.error('No resume file found for this profile');
       return;
@@ -377,14 +378,14 @@ const Resume = () => {
       // Update the loadCurrentProfile function
       const loadCurrentProfile = () => {
         const currentUser = authService.getCurrentUser();
-        const savedProfile = localStorage.getItem('currentProfile');
+        const savedProfile = storageService.get('currentProfile');
     
         if (savedProfile) {
           const parsedProfile = JSON.parse(savedProfile);
-          const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+          const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
     
           if (!currentUser || !storedProfiles[currentUser.id]?.[parsedProfile.id]) {
-            localStorage.removeItem('currentProfile');
+            storageService.remove('currentProfile');
             setProfile(null);
             setPdfGenerated(false);
             setCoverLetterGenerated(false);
@@ -396,15 +397,15 @@ const Resume = () => {
           if (compatibleProfile !== parsedProfile) {
             // Update storage if profile was modified
             storedProfiles[currentUser.id][parsedProfile.id] = compatibleProfile;
-            localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
-            localStorage.setItem('currentProfile', JSON.stringify(compatibleProfile));
+            storageService.set('userProfiles', JSON.stringify(storedProfiles));
+            storageService.set('currentProfile', JSON.stringify(compatibleProfile));
           }
     
           setProfile(compatibleProfile);
           // Check PDF statuses
-          const pdfData = localStorage.getItem(`generatedPDF_${parsedProfile.id}`);
-          const coverLetterData = localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`);
-          console.log("localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`)", localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`))
+          const pdfData = storageService.get(`generatedPDF_${parsedProfile.id}`);
+          const coverLetterData = storageService.get(`generatedPDF_${parsedProfile.id}_coverLetter`);
+          console.log("storageService.get(`generatedPDF_${parsedProfile.id}_coverLetter`)", storageService.get(`generatedPDF_${parsedProfile.id}_coverLetter`))
           setPdfGenerated(!!pdfData);
           setCoverLetterGenerated(coverLetterData === 'true');
         } else {
@@ -421,8 +422,8 @@ const Resume = () => {
         setProfile(newProfile);
     
         if (newProfile) {
-          const pdfData = localStorage.getItem(`generatedPDF_${newProfile.id}`);
-          const coverLetterData = localStorage.getItem(`generatedPDF_${newProfile.id}_coverLetter`);
+          const pdfData = storageService.get(`generatedPDF_${newProfile.id}`);
+          const coverLetterData = storageService.get(`generatedPDF_${newProfile.id}_coverLetter`);
           setPdfGenerated(!!pdfData);
           setCoverLetterGenerated(False);
         }
@@ -434,12 +435,12 @@ const Resume = () => {
       };
     
       window.addEventListener('profileLoaded', handleProfileChange);
-      window.addEventListener('storage', loadCurrentProfile);
+      storageService.addChangeListener(loadCurrentProfile);
       authService.subscribe(handleAuthChange); // Assuming authService provides a subscribe method
     
       return () => {
         window.removeEventListener('profileLoaded', handleProfileChange);
-        window.removeEventListener('storage', loadCurrentProfile);
+        storageService.removeChangeListener(loadCurrentProfile);
         authService.unsubscribe(handleAuthChange);
       };
     }, []);
@@ -595,12 +596,12 @@ const Resume = () => {
     };
 
     const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
     storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
     storedProfiles[currentUser.id][profile.id] = updatedProfile;
 
-    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
-    localStorage.setItem('currentProfile', JSON.stringify(updatedProfile));
+    storageService.set('userProfiles', JSON.stringify(storedProfiles));
+    storageService.set('currentProfile', JSON.stringify(updatedProfile));
 
     window.dispatchEvent(new CustomEvent('profileUpdated', {
       detail: { profile: updatedProfile }
@@ -627,8 +628,8 @@ const Resume = () => {
 
     const success = await generatePDF(profile, fileName, profile.id, true);
     if (success) {
-      localStorage.setItem(`coverLetterFileName_${profile.id}`, fileName);
-      localStorage.setItem(`generatedPDF_${profile.id}_coverLetter`, 'true');
+      storageService.set(`coverLetterFileName_${profile.id}`, fileName);
+      storageService.set(`generatedPDF_${profile.id}_coverLetter`, 'true');
       setCoverLetterGenerated(true);
     }
     return success;
@@ -659,7 +660,7 @@ const Resume = () => {
         {pdfGenerated && (
           <>
             <small className="text-center text-muted">
-              {localStorage.getItem(`pdfFileName_${profile.id}`) || 'resume.pdf'}
+              {storageService.get(`pdfFileName_${profile.id}`) || 'resume.pdf'}
             </small>
             <a
               href="#"
@@ -685,7 +686,7 @@ const Resume = () => {
           {coverLetterGenerated && (
             <>
               <small className="text-center text-muted">
-                {localStorage.getItem(`coverLetterFileName_${profile.id}`)}
+                {storageService.get(`coverLetterFileName_${profile.id}`)}
               </small>
               <a
                 href="#"

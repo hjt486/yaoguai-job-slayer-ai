@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf';
 import { formatDate } from './dateUtils';
 import moment from 'moment';
+import { storageService } from '../../services/storageService';
 
 export const generatePDF = async (profile, fileName, profileId, isCoverLetter = false) => {
   try {
@@ -284,8 +285,8 @@ export const downloadStoredPDF = (profileId, isCoverLetter = false) => {
   const pdfKey = isCoverLetter ? `coverLetter_${profileId}` : `generatedPDF_${profileId}`;
   const fileNameKey = isCoverLetter ? `coverLetterFileName_${profileId}` : `pdfFileName_${profileId}`;
 
-  const pdfData = localStorage.getItem(pdfKey);
-  const fileName = localStorage.getItem(fileNameKey);
+  const pdfData = storageService.get(pdfKey);
+  const fileName = storageService.get(fileNameKey);
 
   if (!pdfData || !fileName) return false;
 

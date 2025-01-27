@@ -4,6 +4,7 @@ import { ResumeSection } from '../resume/Resume';
 import * as ReactDOM from 'react-dom/client';
 import { authService } from '../../services/authService';
 import { getCurrentISOString } from '../common/dateUtils';
+import { storageService } from '../../services/storageService';
 
 // Import CSS as raw strings using Vite's ?raw suffix
 import picoCss from '@picocss/pico/css/pico.css?raw';
@@ -220,7 +221,7 @@ export const FloatingPage = ({ onClose }) => {
   // Add profile loading effect
   useEffect(() => {
     const loadCurrentProfile = () => {
-      const savedProfile = localStorage.getItem('currentProfile');
+      const savedProfile = storageService.get('currentProfile');
       if (savedProfile) {
         setProfile(JSON.parse(savedProfile));
       }
@@ -237,12 +238,12 @@ export const FloatingPage = ({ onClose }) => {
     };
 
     loadCurrentProfile();
-    window.addEventListener('storage', handleStorageChange);
+    storageService.addChangeListener(handleStorageChange);
     window.addEventListener('profileUpdated', handleProfileUpdate);
     window.addEventListener('profileLoaded', handleProfileUpdate);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      storageService.removeChangeListener(handleStorageChange);
       window.removeEventListener('profileUpdated', handleProfileUpdate);
       window.removeEventListener('profileLoaded', handleProfileUpdate);
     };
@@ -264,12 +265,12 @@ export const FloatingPage = ({ onClose }) => {
     };
 
     const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
     storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
     storedProfiles[currentUser.id][profile.id] = updatedProfile;
 
-    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
-    localStorage.setItem('currentProfile', JSON.stringify(updatedProfile));
+    storageService.set('userProfiles', JSON.stringify(storedProfiles));
+    storageService.set('currentProfile', JSON.stringify(updatedProfile));
 
     window.dispatchEvent(new CustomEvent('profileUpdated', {
       detail: { profile: updatedProfile }

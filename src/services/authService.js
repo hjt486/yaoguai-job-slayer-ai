@@ -2,6 +2,7 @@ const API_URL = 'your-api-endpoint';
 const LOCAL_STORAGE_USERS_KEY = 'registeredUsers';
 const CURRENT_USER_KEY = 'currentUser';
 const API_SETTINGS_KEY = 'userApiSettings';
+import { storageService } from './storageService';
 
 class AuthService {
   constructor() {
@@ -34,14 +35,14 @@ class AuthService {
     if (user.password !== credentials.password) throw new Error('Invalid password');
 
     const { password, ...userWithoutPassword } = user;
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+    storageService.set(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
 
     this.notify(); // Notify subscribers after login
     return userWithoutPassword;
   }
 
   logout() {
-    localStorage.removeItem(CURRENT_USER_KEY);
+    storageService.remove(CURRENT_USER_KEY);
     window.dispatchEvent(new CustomEvent('logout'));
     this.notify(); // Notify subscribers after logout
   }
@@ -59,12 +60,12 @@ class AuthService {
     };
 
     users[userIndex] = updatedUser;
-    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
+    storageService.set(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
 
     const currentUser = this.getCurrentUser();
     if (currentUser?.id === userId) {
       const { password, ...userWithoutPassword } = updatedUser;
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+      storageService.set(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
       this.notify(); // Notify if current user updated
     }
 
@@ -73,7 +74,7 @@ class AuthService {
 
 
   getUsers() {
-    const users = localStorage.getItem(LOCAL_STORAGE_USERS_KEY);
+    const users = storageService.get(LOCAL_STORAGE_USERS_KEY);
     return users ? JSON.parse(users) : [];
   }
 
@@ -91,7 +92,7 @@ class AuthService {
     };
 
     users.push(newUser);
-    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
+    storageService.set(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
 
     const { password, ...userWithoutPassword } = newUser;
     return userWithoutPassword;
@@ -110,18 +111,18 @@ class AuthService {
     }
 
     const { password, ...userWithoutPassword } = user;
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+    storageService.set(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
     return userWithoutPassword;
   }
 
   getCurrentUser() {
-    const user = localStorage.getItem(CURRENT_USER_KEY);
+    const user = storageService.get(CURRENT_USER_KEY);
     return user ? JSON.parse(user) : null;
   }
 
   logout() {
-    localStorage.removeItem(CURRENT_USER_KEY);
-    localStorage.removeItem('currentProfile');
+    storageService.remove(CURRENT_USER_KEY);
+    storageService.remove('currentProfile');
     // Dispatch logout event
     window.dispatchEvent(new CustomEvent('logout'));
   }
@@ -141,12 +142,12 @@ class AuthService {
     };
 
     users[userIndex] = updatedUser;
-    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
+    storageService.set(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
 
     const currentUser = this.getCurrentUser();
     if (currentUser && currentUser.id === userId) {
       const { password, ...userWithoutPassword } = updatedUser;
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+      storageService.set(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
     }
 
     const { password, ...userWithoutPassword } = updatedUser;
@@ -155,7 +156,7 @@ class AuthService {
 
   getUserApiSettings(userId) {
     try {
-      const allSettings = JSON.parse(localStorage.getItem(API_SETTINGS_KEY) || '{}');
+      const allSettings = JSON.parse(storageService.get(API_SETTINGS_KEY) || '{}');
       return allSettings[userId] || null;
     } catch (error) {
       console.error('Error loading API settings:', error);
@@ -165,9 +166,9 @@ class AuthService {
 
   updateUserApiSettings(userId, settings) {
     try {
-      const allSettings = JSON.parse(localStorage.getItem(API_SETTINGS_KEY) || '{}');
+      const allSettings = JSON.parse(storageService.get(API_SETTINGS_KEY) || '{}');
       allSettings[userId] = settings;
-      localStorage.setItem(API_SETTINGS_KEY, JSON.stringify(allSettings));
+      storageService.set(API_SETTINGS_KEY, JSON.stringify(allSettings));
       return true;
     } catch (error) {
       console.error('Error saving API settings:', error);

@@ -3,22 +3,23 @@ import { authService } from '../../services/authService';
 import { aiService } from '../common/aiService';
 import { LoadingButton } from '../common/LoadingButton';
 import Modal from '../common/Modal';
+import { storageService } from '../../services/storageService';
 
 const Match = ({ setActiveTab }) => {
   const [currentProfile, setCurrentProfile] = useState(() => {
-    const savedProfile = localStorage.getItem('currentProfile');
+    const savedProfile = storageService.get('currentProfile');
     return savedProfile ? JSON.parse(savedProfile) : null;
   });
 
   const [jobDescription, setJobDescription] = useState(() => {
     const currentUser = authService.getCurrentUser();
-    const savedJob = localStorage.getItem(`jobDescription_${currentUser?.id}_${currentProfile?.id}`);
+    const savedJob = storageService.get(`jobDescription_${currentUser?.id}_${currentProfile?.id}`);
     return savedJob || '';
   });
 
   const [analysisResults, setAnalysisResults] = useState(() => {
     const currentUser = authService.getCurrentUser();
-    const savedResults = localStorage.getItem(`analysisResults_${currentUser?.id}_${currentProfile?.id}`);
+    const savedResults = storageService.get(`analysisResults_${currentUser?.id}_${currentProfile?.id}`);
     return savedResults ? JSON.parse(savedResults) : null;
   });
 
@@ -32,7 +33,7 @@ const Match = ({ setActiveTab }) => {
 
     const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id) {
-      localStorage.setItem(`jobDescription_${currentUser.id}_${currentProfile.id}`, newValue);
+      storageService.set(`jobDescription_${currentUser.id}_${currentProfile.id}`, newValue);
     }
   };
 
@@ -40,7 +41,7 @@ const Match = ({ setActiveTab }) => {
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id && analysisResults) {
-      localStorage.setItem(
+      storageService.set(
         `analysisResults_${currentUser.id}_${currentProfile.id}`,
         JSON.stringify(analysisResults)
       );
@@ -51,8 +52,8 @@ const Match = ({ setActiveTab }) => {
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id) {
-      const savedJob = localStorage.getItem(`jobDescription_${currentUser.id}_${currentProfile.id}`);
-      const savedResults = localStorage.getItem(`analysisResults_${currentUser.id}_${currentProfile.id}`);
+      const savedJob = storageService.get(`jobDescription_${currentUser.id}_${currentProfile.id}`);
+      const savedResults = storageService.get(`analysisResults_${currentUser.id}_${currentProfile.id}`);
 
       setJobDescription(savedJob || '');
       setAnalysisResults(savedResults ? JSON.parse(savedResults) : null);
@@ -121,7 +122,7 @@ const Match = ({ setActiveTab }) => {
       );
 
       // Create new profile with enhanced data
-      const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+      const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
       if (!storedProfiles[currentUser.id]) {
         storedProfiles[currentUser.id] = {};
       }
@@ -146,15 +147,15 @@ const Match = ({ setActiveTab }) => {
 
       // Save to localStorage
       storedProfiles[currentUser.id][nextId] = newProfile;
-      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+      storageService.set('userProfiles', JSON.stringify(storedProfiles));
 
       // Clear the match data for the new profile
-      localStorage.removeItem(`jobDescription_${currentUser.id}_${nextId}`);
-      localStorage.removeItem(`analysisResults_${currentUser.id}_${nextId}`);
+      storageService.remove(`jobDescription_${currentUser.id}_${nextId}`);
+      storageService.remove(`analysisResults_${currentUser.id}_${nextId}`);
 
       // Save as current profile and update last loaded profile
-      localStorage.setItem('currentProfile', JSON.stringify(newProfile));
-      localStorage.setItem(`lastLoadedProfile_${currentUser.id}`, nextId.toString());
+      storageService.set('currentProfile', JSON.stringify(newProfile));
+      storageService.set(`lastLoadedProfile_${currentUser.id}`, nextId.toString());
       
       // Clear current match data
       setJobDescription('');

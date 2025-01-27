@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { SITE_LOGO } from '../common/Constants';
 import Register from './Register';
 import { authService } from '../../services/authService';
+import { storageService } from '../../services/storageService';
 
 const LAST_EMAIL_KEY = 'lastUsedEmail';
 
 const LoginForm = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [loginForm, setLoginForm] = useState({ 
-    email: localStorage.getItem(LAST_EMAIL_KEY) || '', 
+    email: storageService.get(LAST_EMAIL_KEY) || '', 
     password: '' 
   });
   const [error, setError] = useState('');

@@ -5,6 +5,7 @@ import { LoadingButton } from '../common/LoadingButton';
 import { parseDocument } from '../common/DocumentParser';
 import { aiService } from '../common/aiService';
 import { formatDateTime, getCurrentISOString } from '../common/dateUtils';
+import { storageService } from '../../services/storageService';
 
 const Profiles = () => {
   const [profiles, setProfiles] = useState([]);
@@ -33,7 +34,7 @@ const Profiles = () => {
   // Move loadProfiles before useEffect
   const loadProfiles = () => {
     const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
     const userProfiles = storedProfiles[currentUser.id] || {};
 
     const profilesArray = Object.values(userProfiles).sort((a, b) => {
@@ -62,12 +63,12 @@ const Profiles = () => {
 
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-    const lastLoadedProfileId = localStorage.getItem(`lastLoadedProfile_${currentUser.id}`);
+    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
+    const lastLoadedProfileId = storageService.get(`lastLoadedProfile_${currentUser.id}`);
 
     // Clear all user-specific data if no profiles exist for this user
     if (!storedProfiles[currentUser.id]) {
-      localStorage.removeItem('currentProfile');
+      storageService.remove('currentProfile');
       setCurrentProfileId(null);
       setSelectedFile(null);
       setResumeName('');
@@ -94,18 +95,18 @@ const Profiles = () => {
 
     const handleStorageChange = () => {
       loadProfiles();
-      const updatedProfile = JSON.parse(localStorage.getItem('currentProfile'));
+      const updatedProfile = JSON.parse(storageService.get('currentProfile'));
       if (updatedProfile) {
         setCurrentProfileId(updatedProfile.id);
       }
     };
 
     window.addEventListener('profileLoaded', handleProfileUpdate);
-    window.addEventListener('storage', handleStorageChange);
+    storageService.addChangeListener(handleStorageChange);
 
     return () => {
       window.removeEventListener('profileLoaded', handleProfileUpdate);
-      window.removeEventListener('storage', handleStorageChange);
+      storageService.removeChangeListener(handleStorageChange);
     };
   }, []);
 
@@ -129,22 +130,22 @@ const Profiles = () => {
 
   const handleDeleteProfile = (id) => {
     const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
 
     if (storedProfiles[currentUser.id]) {
       // Remove profile from userProfiles
       delete storedProfiles[currentUser.id][id];
-      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+      storageService.set('userProfiles', JSON.stringify(storedProfiles));
 
       // Remove associated data
-      localStorage.removeItem(`resume_${id}`);
-      localStorage.removeItem(`generatedPDF_${id}`);
-      localStorage.removeItem(`pdfFileName_${id}`);
-      localStorage.removeItem(`coverLetter_${id}`);
-      localStorage.removeItem(`coverLetterFileName_${id}`);
+      storageService.remove(`resume_${id}`);
+      storageService.remove(`generatedPDF_${id}`);
+      storageService.remove(`pdfFileName_${id}`);
+      storageService.remove(`coverLetter_${id}`);
+      storageService.remove(`coverLetterFileName_${id}`);
 
       // If the deleted profile was the current profile
-      const currentProfile = JSON.parse(localStorage.getItem('currentProfile'));
+      const currentProfile = JSON.parse(storageService.get('currentProfile'));
       if (currentProfile && currentProfile.id === id) {
         // Find profile with next lower ID
         const remainingProfiles = Object.values(storedProfiles[currentUser.id]);
@@ -157,7 +158,7 @@ const Profiles = () => {
           // If no lower ID found, take the highest ID
           handleLoadProfile(sortedProfiles[0]);
         } else {
-          localStorage.removeItem('currentProfile');
+          storageService.remove('currentProfile');
           setCurrentProfileId(null);
           setSelectedFile(null);
           setResumeName('');
@@ -209,7 +210,7 @@ const Profiles = () => {
       }
 
       // Find the next available ID
-      const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+      const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
       if (!storedProfiles[currentUser.id]) {
         storedProfiles[currentUser.id] = {};
       }
@@ -243,7 +244,7 @@ const Profiles = () => {
             timestamp: new Date().toISOString(),
             profileId: newProfile.id
           };
-          localStorage.setItem(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
+          storageService.set(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
         };
         reader.readAsDataURL(selectedFile);
       } else if (pastedResume) {
@@ -258,14 +259,14 @@ const Profiles = () => {
             timestamp: new Date().toISOString(),
             profileId: newProfile.id
           };
-          localStorage.setItem(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
+          storageService.set(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
         };
         reader.readAsDataURL(blob);
       }
 
       // Update localStorage and state
       storedProfiles[currentUser.id][nextId] = newProfile;
-      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+      storageService.set('userProfiles', JSON.stringify(storedProfiles));
       
       setProfiles(prev => [...prev, newProfile]);
       handleLoadProfile(newProfile);
@@ -281,7 +282,7 @@ const Profiles = () => {
   // Add function to handle setting current profile
   const handleLoadProfile = (profile) => {
     const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
     
     // Verify profile belongs to current user
     if (!storedProfiles[currentUser.id]?.[profile.id]) {
@@ -289,8 +290,8 @@ const Profiles = () => {
       return;
     }
 
-    localStorage.setItem('currentProfile', JSON.stringify(profile));
-    localStorage.setItem(`lastLoadedProfile_${currentUser.id}`, profile.id);
+    storageService.set('currentProfile', JSON.stringify(profile));
+    storageService.set(`lastLoadedProfile_${currentUser.id}`, profile.id);
     setCurrentProfileId(profile.id);
     window.dispatchEvent(new CustomEvent('profileLoaded', {
       detail: { profile }
@@ -300,7 +301,7 @@ const Profiles = () => {
 
   const handleCreateProfile = () => {
     const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
 
     if (!storedProfiles[currentUser.id]) {
       storedProfiles[currentUser.id] = {};
@@ -324,7 +325,7 @@ const Profiles = () => {
 
     // Save to localStorage
     storedProfiles[currentUser.id][nextId] = newProfile;
-    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+    storageService.set('userProfiles', JSON.stringify(storedProfiles));
 
     // Refresh profiles list and load the new profile
     loadProfiles();
@@ -333,7 +334,7 @@ const Profiles = () => {
 
   const handleCopyProfile = (profileToCopy) => {
     const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
 
     if (!storedProfiles[currentUser.id]) {
       storedProfiles[currentUser.id] = {};
@@ -357,7 +358,7 @@ const Profiles = () => {
 
     // Save to localStorage
     storedProfiles[currentUser.id][nextId] = newProfile;
-    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+    storageService.set('userProfiles', JSON.stringify(storedProfiles));
 
     // Refresh profiles list and load the new profile
     loadProfiles();
