@@ -552,7 +552,8 @@ nav {
 .floating-button {
   width: 120px !important;
   height: 70px !important;
-
+  margin: 0;
+  padding: 0;
 }
 
 /* Replace floating-container styles with: */

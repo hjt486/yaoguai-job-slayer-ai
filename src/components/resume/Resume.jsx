@@ -376,33 +376,36 @@ const Resume = () => {
           return;
         }
 
-        // Try to check if content script is already running
+        // Try to check if content script is already running and toggle the floating page
         try {
-          const isAlive = await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
-          if (!isAlive) {
+          const response = await chrome.tabs.sendMessage(tab.id, { action: 'ping' });
+          if (response.alive) {
+            // If alive, send toggle message
+            await chrome.tabs.sendMessage(tab.id, {
+              action: 'toggleFloatingPage',
+              source: 'popup'
+            });
+          } else {
             throw new Error('Content script not responding');
           }
         } catch (err) {
-          // Only inject if the content script isn't already there
+          // Inject content script and open floating page
           console.log('[YaoguaiAI] Injecting content script...');
           await chrome.scripting.executeScript({
             target: { tabId: tab.id },
             files: ['content.js']
           });
+          await chrome.tabs.sendMessage(tab.id, {
+            action: 'openFloatingPage',
+            source: 'popup'
+          });
         }
-
-        // Send message to open floating page
-        console.log('[YaoguaiAI] Sending message to tab:', tab.id);
-        await chrome.tabs.sendMessage(tab.id, {
-          action: 'openFloatingPage',
-          source: 'popup'
-        });
         window.close();
       } catch (error) {
         console.error('[YaoguaiAI] Error in handleAutofill:', error);
       }
     } else {
-      // DEV mode: toggle floating page with proper Shadow DOM
+      // DEV mode: toggle floating page
       if (!floatingInstance) {
         console.log('Mounting floating page in DEV mode');
         const instance = showFloatingPage(() => {

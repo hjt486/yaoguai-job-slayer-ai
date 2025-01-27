@@ -54,31 +54,15 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
     shadowRoot.appendChild(createStyle(`
       :host {
         position: fixed !important;
-        top: 20px !important;
-        right: 20px !important;
+        top: 0 !important;
+        right: 0 !important;
         z-index: 2147483647 !important;
         contain: content !important;
         isolation: isolate !important;
         width: fit-content !important;
         height: fit-content !important;
         background: transparent !important;
-      }
-
-      .pico-scope {
-        background: transparent !important;
-      }
-
-      .pico-scope * {
-
-      }
-
-      .pico-scope .floating-container article {
-        border-radius: 8px !important;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
-      }
-
-      .pico-scope .floating-button {
-        background: white !important;
+        transform: translate(20px, 20px);
       }
     `));
 
@@ -169,6 +153,8 @@ export const showFloatingPage = (onClose) => {
 const initializeContentScript = () => {
   console.log('[YaoguaiAI] Content script initializing...');
 
+  let floatingPageInstance = null;
+
   // Add ping handler
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.action === 'ping') {
@@ -176,11 +162,28 @@ const initializeContentScript = () => {
       return true;
     }
 
+    if (message.action === 'toggleFloatingPage') {
+      if (floatingPageInstance) {
+        floatingPageInstance.remove();
+        floatingPageInstance = null;
+        sendResponse({ success: true });
+      } else {
+        try {
+          floatingPageInstance = mountFloatingPage(null, sendResponse);
+          sendResponse({ success: true });
+        } catch (error) {
+          console.error('[YaoguaiAI] Error mounting floating page:', error);
+          sendResponse({ success: false, error: error.message });
+        }
+      }
+      return true;
+    }
+
     if (message.action === 'openFloatingPage') {
       console.log('[YaoguaiAI] Attempting to mount floating page...');
       try {
-        const container = mountFloatingPage(null, sendResponse);
-        console.log('[YaoguaiAI] Floating page mounted successfully', container);
+        floatingPageInstance = mountFloatingPage(null, sendResponse);
+        console.log('[YaoguaiAI] Floating page mounted successfully', floatingPageInstance);
         sendResponse({ success: true });
       } catch (error) {
         console.error('[YaoguaiAI] Error mounting floating page:', error);
@@ -201,12 +204,15 @@ export const FloatingPage = ({ onClose }) => {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
+  const wasDragging = useRef(false);
+  const hasMoved = useRef(false); // New ref to track actual movement
 
   const handleMouseDown = (e) => {
     if (!isExpanded) {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(true);
+      hasMoved.current = false; // Reset movement tracker
       dragOffset.current = {
         x: e.clientX - position.x,
         y: e.clientY - position.y
@@ -214,17 +220,10 @@ export const FloatingPage = ({ onClose }) => {
     }
   };
 
-  const handleClick = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!isDragging) {
-      setIsExpanded(prev => !prev);
-    }
-  };
-
   const handleMouseMove = (e) => {
     if (isDragging) {
       e.preventDefault();
+      hasMoved.current = true; // Mark actual movement
       setPosition({
         x: e.clientX - dragOffset.current.x,
         y: e.clientY - dragOffset.current.y
@@ -233,23 +232,47 @@ export const FloatingPage = ({ onClose }) => {
   };
 
   const handleMouseUp = () => {
-    setIsDragging(false);
+    if (isDragging) {
+      // Only mark as dragging if there was actual movement
+      wasDragging.current = hasMoved.current;
+      setIsDragging(false);
+    }
+  };
+
+  const handleClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only toggle if no dragging occurred
+    if (!wasDragging.current) {
+      setIsExpanded(prev => !prev);
+    }
+    // Reset dragging flag
+    wasDragging.current = false;
   };
 
   useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
+
+      // Update host element position
+      const updateHostPosition = () => {
+        const host = document.getElementById('yaoguai-host');
+        if (host) {
+          host.style.transform = `translate(${position.x + 20}px, ${position.y + 20}px)`;
+        }
+      };
+      updateHostPosition();
+
       return () => {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging]);
+  }, [isDragging, position]);
 
   return (
-    <div className="pico-scope"
-    >
+    <div className="pico-scope">
       <div
         id="yaoguai-floating-container"
         className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
