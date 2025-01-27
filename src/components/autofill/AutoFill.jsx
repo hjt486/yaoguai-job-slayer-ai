@@ -1,6 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { SITE_LOGO } from '../common/Constants';
+import { SITE_LOGO, LABELS, APPLICATION_ONLY_SECTIONS } from '../common/Constants';
+import { ResumeSection } from '../resume/Resume';
 import * as ReactDOM from 'react-dom/client';
+import { authService } from '../../services/authService';
+import { getCurrentISOString } from '../common/dateUtils';
 
 // Import CSS as raw strings using Vite's ?raw suffix
 import picoCss from '@picocss/pico/css/pico.css?raw';
@@ -209,9 +212,69 @@ export const FloatingPage = ({ onClose }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [profile, setProfile] = useState(null);
   const dragOffset = useRef({ x: 0, y: 0 });
   const wasDragging = useRef(false);
-  const hasMoved = useRef(false); // New ref to track actual movement
+  const hasMoved = useRef(false);
+
+  // Add profile loading effect
+  useEffect(() => {
+    const loadCurrentProfile = () => {
+      const savedProfile = localStorage.getItem('currentProfile');
+      if (savedProfile) {
+        setProfile(JSON.parse(savedProfile));
+      }
+    };
+
+    const handleProfileUpdate = (e) => {
+      setProfile(e.detail.profile);
+    };
+
+    const handleStorageChange = (e) => {
+      if (e.key === 'currentProfile' || e.key?.startsWith('userProfiles')) {
+        loadCurrentProfile();
+      }
+    };
+
+    loadCurrentProfile();
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('profileUpdated', handleProfileUpdate);
+    window.addEventListener('profileLoaded', handleProfileUpdate);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('profileUpdated', handleProfileUpdate);
+      window.removeEventListener('profileLoaded', handleProfileUpdate);
+    };
+  }, []);
+
+  const handleSectionEdit = (section, updates) => {
+    setProfile(prevProfile => {
+      // ... copy the handleSectionEdit function from Resume.jsx ...
+    });
+  };
+
+  const handleSectionSave = () => {
+    const updatedProfile = {
+      ...profile,
+      metadata: {
+        ...profile.metadata,
+        lastModified: getCurrentISOString()
+      }
+    };
+
+    const currentUser = authService.getCurrentUser();
+    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
+    storedProfiles[currentUser.id][profile.id] = updatedProfile;
+
+    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+    localStorage.setItem('currentProfile', JSON.stringify(updatedProfile));
+
+    window.dispatchEvent(new CustomEvent('profileUpdated', {
+      detail: { profile: updatedProfile }
+    }));
+  };
 
   const handleMouseDown = (e) => {
     // Allow dragging on both collapsed state and header
@@ -301,69 +364,29 @@ export const FloatingPage = ({ onClose }) => {
                 </ul>
               </nav>
             </header>
-            <main>
-              <details>
-                <summary>Components Preview</summary>
-                <details>
-                  <summary>Example</summary>
-                </details>
-                <details>
-                  <summary>Button 1</summary>
-                  <button>Button</button>
-                  <button class="secondary">Secondary</button>
-                  <button class="contrast">Contrast</button>
-                  <button disabled>Disabled</button>
-                  <button class="secondary" disabled>Disabled</button>
-                  <button class="contrast" disabled>Disabled</button>
-                  <div role="group">
-                    <button>Button</button>
-                    <button>Button</button>
-                    <button>Button</button></div>
-                </details>
-
-                <article>I’m a card!</article>
-
-                <details>
-                  <summary>Some</summary>
-                  <details class="dropdown">
-                    <summary>Dropdown</summary>
-                    <ul>
-                      <li><a href="#">Solid</a></li>
-                      <li><a href="#">Liquid</a></li>
-                      <li><a href="#">Gas</a></li>
-                      <li><a href="#">Plasma</a></li>
-                    </ul>
-                  </details>
-                  <select name="select" aria-label="Select" required>
-                    <option selected disabled value="">Select</option>
-                    <option>Solid</option>
-                    <option>Liquid</option>
-                    <option>Gas</option>
-                    <option>Plasma</option>false
-                  </select>
-                  <form>
-                    <fieldset role="group">
-                      <input name="email" type="email" placeholder="Email" autocomplete="email" />
-                      <input name="password" type="password" placeholder="Password" />
-                      <input type="submit" value="Log in" />
-                    </fieldset>
-                  </form>
-                </details>
-
-                <details>
-                  <summary>loading</summary>
-                  <button aria-busy="true" aria-label="Please wait…" />
-                  <button aria-busy="true" aria-label="Please wait…" class="secondary" />
-                  <button aria-busy="true" aria-label="Please wait…" class="contrast" />
-                  <button aria-busy="true" class="outline">Please wait…</button>
-                  <button aria-busy="true" class="outline secondary">Please wait…</button>
-                  <button aria-busy="true" class="outline contrast">Please wait…</button>
-                  <progress />
-                  <p>Tooltip on a <a href="#" data-tooltip="Tooltip">link</a></p>
-                  <p>Tooltip on <em data-tooltip="Tooltip">inline element</em></p>
-                  <p><button data-tooltip="Tooltip">Tooltip on a button</button></p>
-                </details>
-              </details>
+            <main style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+              {profile ? (
+                <>
+                  {Object.entries(LABELS.sections)
+                    // Remove the filter that excludes APPLICATION_ONLY_SECTIONS
+                    .map(([section, label]) => (
+                      <ResumeSection
+                        key={section}
+                        section={section}
+                        title={label}
+                        data={profile[section]}
+                        profile={profile}
+                        onEdit={handleSectionEdit}
+                        onSave={handleSectionSave}
+                        hideEdit={true}
+                      />
+                    ))}
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <h3>Please create a profile</h3>
+                </div>
+              )}
             </main>
           </article>
         ) : (

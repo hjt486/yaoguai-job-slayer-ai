@@ -18,7 +18,7 @@ import { LoadingButton } from '../common/LoadingButton';
 import moment from 'moment';
 
 // Update ResumeSection component
-const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
+export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, hideEdit }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [originalData, setOriginalData] = useState(null);
 
@@ -261,7 +261,7 @@ const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
     <section className="resume-section">
       <div className="section-header">
         <h3>{LABELS.sections[section].name}</h3>
-        {!isEditing && (
+        {!isEditing && !hideEdit && (
           <button
             className="outline button-small"
             onClick={handleEdit}
