@@ -6,6 +6,7 @@ import { parseDocument } from '../common/DocumentParser';
 import { aiService } from '../common/aiService';
 import { formatDateTime, getCurrentISOString } from '../common/dateUtils';
 import { storageService } from '../../services/storageService';
+import React from 'react';
 
 const Profiles = () => {
   const [profiles, setProfiles] = useState([]);
@@ -426,6 +427,7 @@ const Profiles = () => {
           accept=".pdf,.doc,.docx,.tex,.txt"
           style={{ display: 'none' }}
           onChange={handleFileChange}
+          data-testid="file-input"
         />
         <LoadingButton
           onClick={handleParse}
