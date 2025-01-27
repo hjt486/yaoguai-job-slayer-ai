@@ -246,13 +246,13 @@ const Match = ({ setActiveTab }) => {
                   <input
                     type="range"
                     id={`keyword-${index}`}
-                    min="1"
+                    min="0"
                     max="5"
-                    value={item.rating || 1}
+                    value={item.rating ?? 0}
                     style={{ height: '2em' }}
                     onChange={(e) => handleRatingChange(index, parseInt(e.target.value, 10))}
                   />
-                  <small className="rating-value">Rating: {item.rating}/5</small>
+                  <small className="rating-value">Rating: {item.rating ?? 0}/5</small>
                 </div>
               </div>
               <textarea

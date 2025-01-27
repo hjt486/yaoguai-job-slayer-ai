@@ -374,35 +374,22 @@ export const AI_PROMPTS = {
 
   Lastly, Ensure all dates are in ISO format and all fields match exactly as specified.
   `,
-  JOB_MATCH: `Analyze this job description and compare it with the provided profile.
+  JOB_MATCH: `Analyze the job description and compare it with the provided candidate profile.
+
+  Parse the candidate's profile (provided as a JSON object) to remove unnecessary escape characters.
   Extract key technical skills, requirements, and qualifications from the job description.
-  Compare them with the candidate's profile (filtered to exclude application-specific fields):
-  ${JSON.stringify(
-    Object.fromEntries(
-      Object.entries(DEFAULT_PROFILE_STRUCTURE)
-        .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
-    ),
-    null,
-    2
-  )}
+  Compare these extracted keywords with the candidate's profile, focusing on both technical and soft skills.
+  Identify missing keywords or skills by consolidating similar terms (e.g., HTML5 and HTML as "HTML," AWS as "Amazon Web Services (AWS)").
+  Return only a valid JSON object in this structure:
+  { "missingKeywords": [ "keyword1", "keyword2" ] }
 
-  Return ONLY the following JSON structure without any markdown or code blocks:
-  {
-    "missingKeywords": [
-        "keyword1",
-        "keyword2",
-    ]
-  }
+  Important Notes:
 
-  Important: 
-  - Do not include markdown code blocks (\`\`\`)
-  - Return only the JSON object
-  - The response must be valid JSON
-  - Include both technical skills and soft skills
-  - Consider partial matches in the profile
-  - Keywords should be strings in an array
-  - Provide specific context for each keyword
-  - Do not analyze application-specific fields`,
+  Do not include markdown code blocks or explanations.
+  Consolidate redundant skills into a single keyword.
+  Provide accurate, specific keywords for missing skills, avoiding duplicates.
+  The response must strictly adhere to the required JSON format.
+  `,
   PROFILE_ENHANCE: `Given the current profile, job description, and missing keywords, please enhance the profile following these rules:
 
   1. For missing keywords with rating >= 1:
@@ -429,6 +416,9 @@ export const AI_PROMPTS = {
      - Improve professional language
      - Highlight relevant experiences
      - Strengthen alignment with job description
+
+  4. For skills that is generallized such as Debugging, Diagnostic Skills, Give and Receive Feedback etc.
+     Just generate a short sentence in the summmary, and mentioned them in the cover letter..
 
   Return the enhanced profile in this exact JSON structure: ${JSON.stringify(
     Object.fromEntries(

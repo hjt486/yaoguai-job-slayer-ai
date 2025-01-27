@@ -1,4 +1,5 @@
 import { AI_CONFIG, AI_PROMPTS } from './Constants';
+import { storageService } from '../../services/storageService';
 
 export const aiService = {
   async sendChatRequest(apiSettings, messages) {
@@ -63,7 +64,7 @@ export const aiService = {
       AI_CONFIG.SYSTEM_MESSAGE,
       {
         role: "user",
-        content: `${AI_PROMPTS.JOB_MATCH}\n\nJob Description:\n${jobDescription}`
+        content: `${AI_PROMPTS.JOB_MATCH}\n\n**Job Description:**\n${jobDescription}\n\n**Candidate Profile:**\n${JSON.stringify(profile, null, 2)}`
       }
     ];
 
