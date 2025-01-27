@@ -70,78 +70,6 @@
   --pico-spacing: 0em;
 }
 
-/* Light theme (default) */
-div.pico-scope[data-theme=light],
-div.pico-scope:not([data-theme=dark]) {
-  --pico-text-selection-color: rgba(64, 224, 208, 0.25);
-  /* Turquoise selection */
-  --pico-primary: #4a148c;
-  /* Deep purple (mystical and powerful) */
-  --pico-primary-background: #7c4dff;
-  /* Bright purple (energetic and modern) */
-  --pico-primary-underline: rgba(74, 20, 140, 0.5);
-  /* Deep purple underline */
-  --pico-primary-hover: #38006b;
-  /* Darker purple (hover effect) */
-  --pico-primary-hover-background: #651fff;
-  /* Brighter purple (hover background) */
-  --pico-primary-focus: rgba(100, 31, 255, 0.5);
-  /* Focus effect */
-  --pico-primary-inverse: #ffffff;
-  /* White for contrast */
-  --pico-switch-color: var(--pico-secondary-hover);
-  /* Secondary hover color */
-  --pico-spacing: 0em;
-}
-
-/* Dark theme (system) */
-@media (prefers-color-scheme: dark) {
-  div.pico-scope:not([data-theme]) {
-    --pico-text-selection-color: rgba(64, 224, 208, 0.1875);
-    /* Turquoise selection */
-    --pico-primary: #7c4dff;
-    /* Bright purple (energetic and modern) */
-    --pico-primary-background: #4a148c;
-    /* Deep purple (mystical and powerful) */
-    --pico-primary-underline: rgba(124, 77, 255, 0.5);
-    /* Bright purple underline */
-    --pico-primary-hover: #651fff;
-    /* Brighter purple (hover effect) */
-    --pico-primary-hover-background: #38006b;
-    /* Darker purple (hover background) */
-    --pico-primary-focus: rgba(100, 31, 255, 0.375);
-    /* Focus effect */
-    --pico-primary-inverse: #ffffff;
-    /* White for contrast */
-    --pico-switch-color: var(--pico-background-color);
-    /* Background color for switch */
-    --pico-spacing: 0em;
-  }
-}
-
-/* Dark theme (forced) */
-div.pico-scope[data-theme=dark] {
-  --pico-text-selection-color: rgba(64, 224, 208, 0.1875);
-  /* Turquoise selection */
-  --pico-primary: #7c4dff;
-  /* Bright purple (energetic and modern) */
-  --pico-primary-background: #4a148c;
-  /* Deep purple (mystical and powerful) */
-  --pico-primary-underline: rgba(124, 77, 255, 0.5);
-  /* Bright purple underline */
-  --pico-primary-hover: #651fff;
-  /* Brighter purple (hover effect) */
-  --pico-primary-hover-background: #38006b;
-  /* Darker purple (hover background) */
-  --pico-primary-focus: rgba(100, 31, 255, 0.375);
-  /* Focus effect */
-  --pico-primary-inverse: #ffffff;
-  /* White for contrast */
-  --pico-switch-color: var(--pico-background-color);
-  /* Background color for switch */
-  --pico-spacing: 0em;
-}
-
 #div.pico-scope {
   width: 400px;
   height: 600px;
@@ -633,11 +561,11 @@ nav {
   /* Changed from fixed */
   width: 100% !important;
   height: 100% !important;
-  background: white !important;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+  box-shadow: none !important;
   transition: all 0.3s ease !important;
   margin: 0 !important;
   padding: 0 !important;
+  background: transparent !important;
 }
 
 .floating-container.collapsed {
@@ -648,6 +576,13 @@ nav {
 .floating-container.expanded {
   width: 400px !important;
   min-height: 300px !important;
+}
+
+.floating-container article {
+  background: var(--yaoguai-pico-background-color) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+  padding: 1rem !important;
 }
 
 #host {

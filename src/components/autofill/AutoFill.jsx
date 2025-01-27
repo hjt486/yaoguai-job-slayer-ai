@@ -52,35 +52,24 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
 
     // Base reset and container styles
     shadowRoot.appendChild(createStyle(`
-  :host {
-    position: fixed !important;
-    top: 20px !important;
-    right: 20px !important;
-    z-index: 2147483647 !important;
-    contain: content !important;
-    isolation: isolate !important;
-    width: fit-content !important;
-    height: fit-content !important;
-    color-scheme: light dark;
-    --yaoguai-pico-background-color: var(--pico-background-color, #fff);
-    --yaoguai-pico-color: var(--pico-color, inherit);
-  }
+      :host {
+        position: fixed !important;
+        top: 20px !important;
+        right: 20px !important;
+        z-index: 2147483647 !important;
+        contain: content !important;
+        isolation: isolate !important;
+        width: fit-content !important;
+        height: fit-content !important;
+      }
 
-  .pico-scope {
-    all: initial;
-    display: block;
-    font-family: inherit;
-    line-height: 1.5;
-    color: var(--yaoguai-pico-color);
-    background-color: var(--yaoguai-pico-background-color);
-  }
+      .pico-scope {
+      }
 
-  .pico-scope * {
-    box-sizing: border-box;
-    font-family: inherit;
-    line-height: inherit;
-  }
-`));
+      .pico-scope * {
+
+      }
+    `));
 
     // 3. CSS processing helpers
     const scopeCSSText = (css, scope) => {
@@ -88,8 +77,13 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
         [/:root\b/g, scope],          // Root selector
         [/html|body/g, scope],        // HTML/body elements
         [/--pico-/g, '--yaoguai-pico-'], // CSS variables
+        [/var\(--pico-/g, 'var(--yaoguai-pico-'], // Fix variable references
         [/(\s|,)html|body/g, '$1' + scope], // Selector lists
-        [/([^{}]*){/g, `${scope} $1{`] // General scoping
+        // Don't modify @keyframes or media queries
+        [/([^@{}]*){/g, (match, p1) => {
+          if (p1.includes('@keyframes') || p1.includes('@media')) return match;
+          return `${scope} ${p1}{`;
+        }]
       ];
 
       return replacements.reduce(
@@ -99,54 +93,26 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
       );
     };
 
-    // Process Pico CSS
+    // Process Pico CSS first to ensure base styles
     const scopedPico = scopeCSSText(picoCss, 'div.pico-scope');
 
-    // Process App CSS with additional theming
+    // Then process App CSS
     const scopedApp = scopeCSSText(appCss, 'div.pico-scope')
       .replace(/(\[data-theme=light\],\s*):root/g, '$1div.pico-scope')
-      .replace(/:root:not\(\[data-theme=dark\]\)/g, 'div.pico-scope:not([data-theme=dark])')
-      .replace(/@media\s+\(prefers-color-scheme:\s*dark\)\s*{\s*:root:not\(\[data-theme\]\)/g,
-        '@media (prefers-color-scheme: dark) { div.pico-scope:not([data-theme])');
+      .replace(/:root:not\(\[data-theme=dark\]\)/g, 'div.pico-scope:not([data-theme=dark])');
 
-    // Container-specific overrides
-    const containerOverrides = `
-  .floating-container {
-    background: var(--yaoguai-pico-background-color) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
-    padding: 1rem !important;
-  }
-
-  .floating-container.expanded {
-    width: 300px !important;
-    min-height: 200px !important;
-  }
-
-  .floating-button {
-    width: 40px !important;
-    height: 40px !important;
-    padding: 8px !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: white !important;
-    border: 1px solid #ddd !important;
-  }
-
-  article {
-    margin: 0 !important;
-    padding: 1rem !important;
-  }
-`;
+    // 4. Assemble styles in order of specificity
+    shadowRoot.append(
+      container,
+      createStyle(scopedPico),
+      createStyle(scopedApp)
+    );
 
     // 4. Assemble styles in order
     shadowRoot.append(
       container,
       createStyle(scopedPico),
       createStyle(scopedApp),
-      createStyle(containerOverrides)
     );
   } else {
     // DEV mode styling
@@ -296,31 +262,67 @@ export const FloatingPage = ({ onClose }) => {
               </nav>
             </header>
             <main>
-              <fieldset>
-                <textarea
-                  name="bio"
-                  placeholder="Write a professional short bio..."
-                  aria-label="Professional short bio"
-                >
-                </textarea>
-                <label>
-                  Brightness
-                  <input type="range" />
-                </label>
+              <details>
+                <summary>Components Preview</summary>
+                <details>
+                  <summary>Example</summary>
+                </details>
+                <details>
+                  <summary>Button 1</summary>
+                  <button>Button</button>
+                  <button class="secondary">Secondary</button>
+                  <button class="contrast">Contrast</button>
+                  <button disabled>Disabled</button>
+                  <button class="secondary" disabled>Disabled</button>
+                  <button class="contrast" disabled>Disabled</button>
+                  <div role="group">
+                    <button>Button</button>
+                    <button>Button</button>
+                    <button>Button</button></div>
+                </details>
 
-                <label>
-                  <input name="terms" type="checkbox" role="switch" />
-                  I agree to the Terms
-                </label>
-                <label>
-                  <input name="opt-in" type="checkbox" role="switch" checked />
-                  Receive news and offers
-                </label>
-              </fieldset>
-              <progress />
-              <details aria-busy="true">
-                <summary>Auto Fill Options</summary>
-                <p>This is the floating page for auto-filling.</p>
+                <article>I’m a card!</article>
+
+                <details>
+                  <summary>Some</summary>
+                  <details class="dropdown">
+                    <summary>Dropdown</summary>
+                    <ul>
+                      <li><a href="#">Solid</a></li>
+                      <li><a href="#">Liquid</a></li>
+                      <li><a href="#">Gas</a></li>
+                      <li><a href="#">Plasma</a></li>
+                    </ul>
+                  </details>
+                  <select name="select" aria-label="Select" required>
+                    <option selected disabled value="">Select</option>
+                    <option>Solid</option>
+                    <option>Liquid</option>
+                    <option>Gas</option>
+                    <option>Plasma</option>false
+                  </select>
+                  <form>
+                    <fieldset role="group">
+                      <input name="email" type="email" placeholder="Email" autocomplete="email" />
+                      <input name="password" type="password" placeholder="Password" />
+                      <input type="submit" value="Log in" />
+                    </fieldset>
+                  </form>
+                </details>
+
+                <details>
+                  <summary>loading</summary>
+                  <button aria-busy="true" aria-label="Please wait…" />
+                  <button aria-busy="true" aria-label="Please wait…" class="secondary" />
+                  <button aria-busy="true" aria-label="Please wait…" class="contrast" />
+                  <button aria-busy="true" class="outline">Please wait…</button>
+                  <button aria-busy="true" class="outline secondary">Please wait…</button>
+                  <button aria-busy="true" class="outline contrast">Please wait…</button>
+                  <progress />
+                  <p>Tooltip on a <a href="#" data-tooltip="Tooltip">link</a></p>
+                  <p>Tooltip on <em data-tooltip="Tooltip">inline element</em></p>
+                  <p><button data-tooltip="Tooltip">Tooltip on a button</button></p>
+                </details>
               </details>
             </main>
           </article>

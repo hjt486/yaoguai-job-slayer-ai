@@ -224,6 +224,70 @@ const Settings = () => {
         <h1>API Settings</h1>
         <p>Updated successfully!</p>
       </Modal>
+
+      <details>
+        <summary>Components Preview</summary>
+        <details>
+          <summary>Example</summary>
+        </details>
+        <details>
+          <summary>Button 1</summary>
+          <button>Button</button>
+          <button class="secondary">Secondary</button>
+          <button class="contrast">Contrast</button>
+          <button disabled>Disabled</button>
+          <button class="secondary" disabled>Disabled</button>
+          <button class="contrast" disabled>Disabled</button>
+          <div role="group">
+            <button>Button</button>
+            <button>Button</button>
+            <button>Button</button></div>
+        </details>
+
+        <article>I’m a card!</article>
+
+        <details>
+          <summary>Some</summary>
+          <details class="dropdown">
+            <summary>Dropdown</summary>
+            <ul>
+              <li><a href="#">Solid</a></li>
+              <li><a href="#">Liquid</a></li>
+              <li><a href="#">Gas</a></li>
+              <li><a href="#">Plasma</a></li>
+            </ul>
+          </details>
+          <select name="select" aria-label="Select" required>
+            <option selected disabled value="">Select</option>
+            <option>Solid</option>
+            <option>Liquid</option>
+            <option>Gas</option>
+            <option>Plasma</option>false
+          </select>
+          <form>
+            <fieldset role="group">
+              <input name="email" type="email" placeholder="Email" autocomplete="email" />
+              <input name="password" type="password" placeholder="Password" />
+              <input type="submit" value="Log in" />
+            </fieldset>
+          </form>
+        </details>
+
+        <details>
+          <summary>loading</summary>
+          <button aria-busy="true" aria-label="Please wait…" />
+          <button aria-busy="true" aria-label="Please wait…" class="secondary" />
+          <button aria-busy="true" aria-label="Please wait…" class="contrast" />
+          <button aria-busy="true" class="outline">Please wait…</button>
+          <button aria-busy="true" class="outline secondary">Please wait…</button>
+          <button aria-busy="true" class="outline contrast">Please wait…</button>
+          <progress />
+          <p>Tooltip on a <a href="#" data-tooltip="Tooltip">link</a></p>
+          <p>Tooltip on <em data-tooltip="Tooltip">inline element</em></p>
+          <p><button data-tooltip="Tooltip">Tooltip on a button</button></p>
+        </details>
+      </details>
+      
     </div>
   );
 };
