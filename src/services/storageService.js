@@ -15,6 +15,58 @@ class StorageService {
     }
   }
 
+  // Add binary data handling methods
+  async getBinary(key) {
+    if (isExtension) {
+      await this.initSyncCache();
+      const data = this.cache.get(key);
+      return data ? data : null;
+    }
+    return localStorage.getItem(key);
+  }
+
+  async setBinary(key, value) {
+    if (isExtension) {
+      await this.initSyncCache();
+      this.cache.set(key, value);
+      return chrome.storage.local.set({ [key]: value });
+    }
+    localStorage.setItem(key, value);
+    return true;
+  }
+
+  // Update existing methods to handle JSON
+  get(key) {
+    if (isExtension) {
+      if (!this.ready) {
+        throw new Error('Storage not initialized. Use async methods in extension context');
+      }
+      const value = this.cache.get(key);
+      try {
+        return value ? JSON.parse(value) : null;
+      } catch {
+        return value;
+      }
+    }
+    const value = localStorage.getItem(key);
+    try {
+      return value ? JSON.parse(value) : null;
+    } catch {
+      return value;
+    }
+  }
+
+  set(key, value) {
+    const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+    if (isExtension) {
+      this.cache.set(key, stringValue);
+      chrome.storage.local.set({ [key]: stringValue }).catch(console.error);
+    } else {
+      localStorage.setItem(key, stringValue);
+    }
+    return true;
+  }
+
   // Synchronous initialization wrapper
   initSyncCache() {
     if (!this.initPromise) {

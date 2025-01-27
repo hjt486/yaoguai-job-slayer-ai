@@ -22,7 +22,7 @@ const LoginForm = ({ onLogin }) => {
 
     try {
       // Save email before attempting login
-      localStorage.setItem(LAST_EMAIL_KEY, loginForm.email);
+      storageService.set(LAST_EMAIL_KEY, loginForm.email);
       
       const response = await authService.login(loginForm);
       console.log('Login successful:', response);
@@ -43,7 +43,7 @@ const LoginForm = ({ onLogin }) => {
         email: response.email,
         password: ''
       });
-      localStorage.setItem(LAST_EMAIL_KEY, response.email);
+      storageService.set(LAST_EMAIL_KEY, response.email);
     } catch (error) {
       throw error; // Propagate error to LoadingButton
     }

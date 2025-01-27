@@ -612,6 +612,11 @@ const Resume = () => {
     setPdfGenerated(false);
     const fileName = `${profile.personal?.fullName || 'Resume'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_resume`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
 
+    // Clear old PDF data before generating new one
+    storageService.remove(`generatedPDF_${profile.id}`);
+    storageService.remove(`pdfFileName_${profile.id}`);
+    storageService.remove(`pdfTimestamp_${profile.id}`);
+
     const success = await generatePDF(profile, fileName, profile.id, false);
     setPdfGenerated(success);
     return success;
@@ -626,8 +631,13 @@ const Resume = () => {
     setCoverLetterGenerated(false);
     const fileName = `${profile.personal?.fullName || 'Cover_Letter'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_cover_letter`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
 
+    // Clear old cover letter data before generating new one
+    storageService.remove(`coverLetter_${profile.id}`);
+    storageService.remove(`coverLetterFileName_${profile.id}`);
+
     const success = await generatePDF(profile, fileName, profile.id, true);
     if (success) {
+      // Store cover letter data separately from resume data
       storageService.set(`coverLetterFileName_${profile.id}`, fileName);
       storageService.set(`generatedPDF_${profile.id}_coverLetter`, 'true');
       setCoverLetterGenerated(true);
