@@ -146,10 +146,10 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
         // Get the formatted text that's displayed
         const formattedValue = event.currentTarget.textContent;
         navigator.clipboard.writeText(formattedValue);
-        
+
         const target = event.currentTarget;
         const originalTooltip = target.getAttribute('data-tooltip');
-        
+
         target.setAttribute('data-tooltip', 'Copied!');
         setTimeout(() => {
           target.setAttribute('data-tooltip', originalTooltip || 'Click to copy');
@@ -183,8 +183,8 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
                     </button>
                   </div>
                 ) : (
-                  <span 
-                    onClick={(e) => handleCopy(skill, e)} 
+                  <span
+                    onClick={(e) => handleCopy(skill, e)}
                     style={{ cursor: 'pointer' }}
                     data-tooltip="Click to copy"
                   >
@@ -224,17 +224,17 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
                     renderInput(key, value, index)
                   ) : (
                     // In the renderContent function, update the span elements
-                        <span 
-                          onClick={(e) => handleCopy(value, e)}
-                          style={{ 
-                            whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal',
-                            cursor: 'pointer',
-                            textDecoration: 'none'  // Add this line
-                          }}
-                          data-tooltip="Click to copy"
-                        >
-                          {getFormattedDate(key, value)}
-                        </span>
+                    <span
+                      onClick={(e) => handleCopy(value, e)}
+                      style={{
+                        whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal',
+                        cursor: 'pointer',
+                        textDecoration: 'none'  // Add this line
+                      }}
+                      data-tooltip="Click to copy"
+                    >
+                      {getFormattedDate(key, value)}
+                    </span>
                   )}
                 </div>
               ))}
@@ -257,9 +257,9 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
           {isEditing ? (
             renderInput(key, value)
           ) : (
-            <span 
+            <span
               onClick={(e) => handleCopy(value, e)}  // Add event parameter here
-              style={{ 
+              style={{
                 whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal',
                 cursor: 'pointer'
               }}
@@ -286,8 +286,8 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
           }}
         />
       ) : (
-        <p 
-          className="pre-wrap" 
+        <p
+          className="pre-wrap"
           onClick={(e) => handleCopy(data, e)}
           style={{ cursor: 'pointer' }}
           data-tooltip="Click to copy"
@@ -351,99 +351,55 @@ const Resume = () => {
 
   // Combined useEffect for profile loading and PDF status
   useEffect(() => {
-    // In the loadCurrentProfile function within useEffect
-    const ensureProfileCompatibility = (profile) => {
-        const updatedProfile = { ...profile };
-        let needsUpdate = false;
-    
-        // Check all sections from DEFAULT_PROFILE_STRUCTURE
-        Object.entries(DEFAULT_PROFILE_STRUCTURE).forEach(([section, defaultValue]) => {
-          if (!updatedProfile[section]) {
-            updatedProfile[section] = JSON.parse(JSON.stringify(defaultValue));
-            needsUpdate = true;
-          } else if (typeof defaultValue === 'object' && !Array.isArray(defaultValue)) {
-            // Check nested fields in objects
-            Object.keys(defaultValue).forEach(field => {
-              if (!(field in updatedProfile[section])) {
-                updatedProfile[section][field] = defaultValue[field];
-                needsUpdate = true;
-              }
-            });
-          }
-        });
-    
-        return needsUpdate ? updatedProfile : profile;
-      };
-    
-      // Update the loadCurrentProfile function
-      const loadCurrentProfile = () => {
-        const currentUser = authService.getCurrentUser();
-        const savedProfile = storageService.get('currentProfile');
-    
-        if (savedProfile) {
-          const parsedProfile = JSON.parse(savedProfile);
-          const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
-    
-          if (!currentUser || !storedProfiles[currentUser.id]?.[parsedProfile.id]) {
-            storageService.remove('currentProfile');
-            setProfile(null);
-            setPdfGenerated(false);
-            setCoverLetterGenerated(false);
-            return;
-          }
-    
-          // Add compatibility check
-          const compatibleProfile = ensureProfileCompatibility(parsedProfile);
-          if (compatibleProfile !== parsedProfile) {
-            // Update storage if profile was modified
-            storedProfiles[currentUser.id][parsedProfile.id] = compatibleProfile;
-            storageService.set('userProfiles', JSON.stringify(storedProfiles));
-            storageService.set('currentProfile', JSON.stringify(compatibleProfile));
-          }
-    
-          setProfile(compatibleProfile);
-          // Check PDF statuses
-          const pdfData = storageService.get(`generatedPDF_${parsedProfile.id}`);
-          const coverLetterData = storageService.get(`generatedPDF_${parsedProfile.id}_coverLetter`);
-          console.log("storageService.get(`generatedPDF_${parsedProfile.id}_coverLetter`)", storageService.get(`generatedPDF_${parsedProfile.id}_coverLetter`))
-          setPdfGenerated(!!pdfData);
-          setCoverLetterGenerated(coverLetterData === 'true');
-        } else {
-          setProfile(null);
-          setPdfGenerated(false);
-          setCoverLetterGenerated(false);
-        }
-      };
-    
-      loadCurrentProfile();
-    
-      const handleProfileChange = (e) => {
-        const newProfile = e.detail.profile;
-        setProfile(newProfile);
-    
-        if (newProfile) {
-          const pdfData = storageService.get(`generatedPDF_${newProfile.id}`);
-          const coverLetterData = storageService.get(`generatedPDF_${newProfile.id}_coverLetter`);
-          setPdfGenerated(!!pdfData);
-          setCoverLetterGenerated(False);
-        }
-      };
-    
-      // Add event listener for authentication changes
-      const handleAuthChange = () => {
-        loadCurrentProfile();
-      };
-    
-      window.addEventListener('profileLoaded', handleProfileChange);
-      storageService.addChangeListener(loadCurrentProfile);
-      authService.subscribe(handleAuthChange); // Assuming authService provides a subscribe method
-    
-      return () => {
-        window.removeEventListener('profileLoaded', handleProfileChange);
-        storageService.removeChangeListener(loadCurrentProfile);
-        authService.unsubscribe(handleAuthChange);
-      };
-    }, []);
+    const loadCurrentProfile = () => {
+      const savedProfile = storageService.get('currentProfile');
+
+      if (savedProfile) {
+        const parsedProfile = JSON.parse(savedProfile);
+        setProfile(parsedProfile);
+
+        // Check PDF statuses
+        const resumePDF = storageService.get(`resumePDF_${parsedProfile.id}`);
+        const coverLetterPDF = storageService.get(`coverLetter_${parsedProfile.id}`);
+        
+        setPdfGenerated(!!resumePDF);
+        setCoverLetterGenerated(!!coverLetterPDF);
+      } else {
+        setProfile(null);
+        setPdfGenerated(false);
+        setCoverLetterGenerated(false);
+      }
+    };
+
+    const handleProfileChange = (e) => {
+      const newProfile = e.detail.profile;
+      setProfile(newProfile);
+
+      if (newProfile) {
+        const resumePDF = storageService.get(`resumePDF_${newProfile.id}`);
+        const coverLetterPDF = storageService.get(`coverLetter_${newProfile.id}`);
+        
+        setPdfGenerated(!!resumePDF);
+        setCoverLetterGenerated(!!coverLetterPDF);
+      } else {
+        setPdfGenerated(false);
+        setCoverLetterGenerated(false);
+      }
+    };
+
+    loadCurrentProfile();
+
+    // Event listeners
+    window.addEventListener('profileLoaded', handleProfileChange);
+    storageService.addChangeListener(loadCurrentProfile);
+    authService.subscribe(loadCurrentProfile);
+
+    return () => {
+      window.removeEventListener('profileLoaded', handleProfileChange);
+      storageService.removeChangeListener(loadCurrentProfile);
+      authService.unsubscribe(loadCurrentProfile);
+    };
+  }, []);
 
   // Preview effect - keep only this one, remove the duplicate at the bottom
   useEffect(() => {
@@ -631,15 +587,16 @@ const Resume = () => {
     setCoverLetterGenerated(false);
     const fileName = `${profile.personal?.fullName || 'Cover_Letter'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_cover_letter`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
 
-    // Clear old cover letter data before generating new one
+    // Only clear cover letter related data
     storageService.remove(`coverLetter_${profile.id}`);
     storageService.remove(`coverLetterFileName_${profile.id}`);
+    storageService.remove(`coverLetterGenerated_${profile.id}`);
 
     const success = await generatePDF(profile, fileName, profile.id, true);
     if (success) {
-      // Store cover letter data separately from resume data
+      // Store both the file name and the generation status
       storageService.set(`coverLetterFileName_${profile.id}`, fileName);
-      storageService.set(`generatedPDF_${profile.id}_coverLetter`, 'true');
+      storageService.set(`coverLetterGenerated_${profile.id}`, 'true');
       setCoverLetterGenerated(true);
     }
     return success;
@@ -670,7 +627,7 @@ const Resume = () => {
         {pdfGenerated && (
           <>
             <small className="text-center text-muted">
-              {storageService.get(`pdfFileName_${profile.id}`) || 'resume.pdf'}
+              {storageService.get(`resumeFileName_${profile.id}`) || 'resume.pdf'}
             </small>
             <a
               href="#"
@@ -696,7 +653,7 @@ const Resume = () => {
           {coverLetterGenerated && (
             <>
               <small className="text-center text-muted">
-                {storageService.get(`coverLetterFileName_${profile.id}`)}
+                {storageService.get(`coverLetterFileName_${profile.id}`) || 'cover_letter.pdf'}
               </small>
               <a
                 href="#"
@@ -722,7 +679,7 @@ const Resume = () => {
             onSave={handleSectionSave}
           />
         ))}
-      
+
       <h3 className="application-info-header">Application Information</h3>
       {Object.entries(LABELS.sections)
         .filter(([section]) => APPLICATION_ONLY_SECTIONS.includes(section))
@@ -737,7 +694,7 @@ const Resume = () => {
             onSave={handleSectionSave}
           />
         ))}
-      
+
     </article>
   );
 };

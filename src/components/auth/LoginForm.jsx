@@ -9,11 +9,20 @@ const LAST_EMAIL_KEY = 'lastUsedEmail';
 const LoginForm = ({ onLogin }) => {
   const [isRegistering, setIsRegistering] = useState(false);
   const [loginForm, setLoginForm] = useState({ 
-    email: storageService.get(LAST_EMAIL_KEY) || '', 
+    email: '', 
     password: '' 
   });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+
+  // Add useEffect to load last email
+  useEffect(() => {
+    const loadLastEmail = async () => {
+      const lastEmail = await storageService.getAsync(LAST_EMAIL_KEY);
+      if (lastEmail) {
+        setLoginForm(prev => ({ ...prev, email: lastEmail }));
+      }
+    };
+    loadLastEmail();
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -21,8 +30,8 @@ const LoginForm = ({ onLogin }) => {
     setIsLoading(true);
 
     try {
-      // Save email before attempting login
-      storageService.set(LAST_EMAIL_KEY, loginForm.email);
+      // Save email before attempting login using async method
+      await storageService.setAsync(LAST_EMAIL_KEY, loginForm.email);
       
       const response = await authService.login(loginForm);
       console.log('Login successful:', response);
@@ -43,11 +52,13 @@ const LoginForm = ({ onLogin }) => {
         email: response.email,
         password: ''
       });
-      storageService.set(LAST_EMAIL_KEY, response.email);
+      await storageService.setAsync(LAST_EMAIL_KEY, response.email);
     } catch (error) {
-      throw error; // Propagate error to LoadingButton
+      throw error;
     }
   };
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   if (isRegistering) {
     return <Register 

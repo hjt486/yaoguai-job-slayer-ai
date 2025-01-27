@@ -35,7 +35,7 @@ const Profiles = () => {
   // Update loadProfiles to be async
   const loadProfiles = async () => {
     try {
-      const currentUser = authService.getCurrentUser();
+      const currentUser = await authService.getCurrentUser();
       const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
       const userProfiles = storedProfiles[currentUser.id] || {};
 
@@ -55,7 +55,7 @@ const Profiles = () => {
   const handleCreateProfile = async () => {
     try {
       setError('');
-      const currentUser = authService.getCurrentUser();
+      const currentUser = await authService.getCurrentUser();
       if (!currentUser) {
         throw new Error('No user logged in');
       }
@@ -124,21 +124,19 @@ const Profiles = () => {
     const initializeProfiles = async () => {
       try {
         const currentUser = authService.getCurrentUser();
-        const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
-        const lastLoadedProfileId = storageService.get(`lastLoadedProfile_${currentUser.id}`);
+        const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
+        const lastLoadedProfileId = await storageService.getAsync(`lastLoadedProfile_${currentUser.id}`);
 
         // Clear all user-specific data if no profiles exist for this user
         if (!storedProfiles[currentUser.id]) {
-          storageService.remove('currentProfile');
+          await storageService.removeAsync('currentProfile');
           setCurrentProfileId(null);
           setSelectedFile(null);
           setResumeName('');
           setPastedResume('');
         } else if (lastLoadedProfileId && storedProfiles[currentUser.id][lastLoadedProfileId]) {
-          // Load the last used profile if it exists
           await handleLoadProfile(storedProfiles[currentUser.id][lastLoadedProfileId]);
         } else {
-          // Load the first available profile as fallback
           const firstProfile = Object.values(storedProfiles[currentUser.id])[0];
           if (firstProfile) {
             await handleLoadProfile(firstProfile);
@@ -154,7 +152,6 @@ const Profiles = () => {
 
     initializeProfiles();
 
-    // Update event handlers for storage operations
     const handleProfileUpdate = async (e) => {
       console.log('Profile update received:', e.detail.profile);
       await loadProfiles();
@@ -164,7 +161,7 @@ const Profiles = () => {
     const handleStorageChange = async () => {
       try {
         await loadProfiles();
-        const updatedProfile = JSON.parse(storageService.get('currentProfile'));
+        const updatedProfile = JSON.parse(await storageService.getAsync('currentProfile'));
         if (updatedProfile) {
           setCurrentProfileId(updatedProfile.id);
         }
@@ -200,46 +197,46 @@ const Profiles = () => {
   };
 
 
-  const handleDeleteProfile = (id) => {
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
-
-    if (storedProfiles[currentUser.id]) {
-      // Remove profile from userProfiles
-      delete storedProfiles[currentUser.id][id];
-      storageService.set('userProfiles', JSON.stringify(storedProfiles));
-
-      // Remove associated data
-      storageService.remove(`resume_${id}`);
-      storageService.remove(`generatedPDF_${id}`);
-      storageService.remove(`pdfFileName_${id}`);
-      storageService.remove(`coverLetter_${id}`);
-      storageService.remove(`coverLetterFileName_${id}`);
-
-      // If the deleted profile was the current profile
-      const currentProfile = JSON.parse(storageService.get('currentProfile'));
-      if (currentProfile && currentProfile.id === id) {
-        // Find profile with next lower ID
-        const remainingProfiles = Object.values(storedProfiles[currentUser.id]);
-        const sortedProfiles = remainingProfiles.sort((a, b) => b.id - a.id);
-        const nextProfile = sortedProfiles.find(p => p.id < id);
-
-        if (nextProfile) {
-          handleLoadProfile(nextProfile);
-        } else if (sortedProfiles.length > 0) {
-          // If no lower ID found, take the highest ID
-          handleLoadProfile(sortedProfiles[0]);
-        } else {
-          storageService.remove('currentProfile');
-          setCurrentProfileId(null);
-          setSelectedFile(null);
-          setResumeName('');
+  const handleDeleteProfile = async (id) => {
+      const currentUser = authService.getCurrentUser();
+      const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
+  
+      if (storedProfiles[currentUser.id]) {
+        // Remove profile from userProfiles
+        delete storedProfiles[currentUser.id][id];
+        await storageService.setAsync('userProfiles', JSON.stringify(storedProfiles));
+  
+        // Remove associated data
+        await Promise.all([
+          storageService.removeAsync(`resume_${id}`),
+          storageService.removeAsync(`generatedPDF_${id}`),
+          storageService.removeAsync(`pdfFileName_${id}`),
+          storageService.removeAsync(`coverLetter_${id}`),
+          storageService.removeAsync(`coverLetterFileName_${id}`)
+        ]);
+  
+        // If the deleted profile was the current profile
+        const currentProfile = JSON.parse(await storageService.getAsync('currentProfile'));
+        if (currentProfile && currentProfile.id === id) {
+          const remainingProfiles = Object.values(storedProfiles[currentUser.id]);
+          const sortedProfiles = remainingProfiles.sort((a, b) => b.id - a.id);
+          const nextProfile = sortedProfiles.find(p => p.id < id);
+  
+          if (nextProfile) {
+            await handleLoadProfile(nextProfile);
+          } else if (sortedProfiles.length > 0) {
+            await handleLoadProfile(sortedProfiles[0]);
+          } else {
+            await storageService.removeAsync('currentProfile');
+            setCurrentProfileId(null);
+            setSelectedFile(null);
+            setResumeName('');
+          }
         }
+  
+        await loadProfiles();
       }
-
-      loadProfiles();
-    }
-  };
+    };
 
   // Update handleParse to handle profile updates
   const handleParse = async () => {
@@ -248,8 +245,8 @@ const Profiles = () => {
     setError('');
 
     try {
-      const currentUser = authService.getCurrentUser();
-      const apiSettings = authService.getUserApiSettings(currentUser.id);
+      const currentUser = await authService.getCurrentUser();
+      const apiSettings = await authService.getUserApiSettings(currentUser.id);
 
       if (!apiSettings) {
         throw new Error('Please configure API settings first');
@@ -282,7 +279,7 @@ const Profiles = () => {
       }
 
       // Find the next available ID
-      const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
+      const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
       if (!storedProfiles[currentUser.id]) {
         storedProfiles[currentUser.id] = {};
       }
@@ -307,7 +304,7 @@ const Profiles = () => {
       // Save the resume file if it exists
       if (selectedFile) {
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.onload = async () => {
           const base64File = reader.result;
           const resumeFileData = {
             name: selectedFile.name,
@@ -316,14 +313,13 @@ const Profiles = () => {
             timestamp: new Date().toISOString(),
             profileId: newProfile.id
           };
-          storageService.set(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
+          await storageService.setAsync(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
         };
         reader.readAsDataURL(selectedFile);
       } else if (pastedResume) {
-        // Save pasted resume as text file
         const blob = new Blob([pastedResume], { type: 'text/plain' });
         const reader = new FileReader();
-        reader.onload = () => {
+        reader.onload = async () => {
           const resumeFileData = {
             name: 'pasted_resume.txt',
             type: 'text/plain',
@@ -331,18 +327,21 @@ const Profiles = () => {
             timestamp: new Date().toISOString(),
             profileId: newProfile.id
           };
-          storageService.set(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
+          await storageService.setAsync(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
         };
         reader.readAsDataURL(blob);
       }
 
       // Update localStorage and state
       storedProfiles[currentUser.id][nextId] = newProfile;
-      storageService.set('userProfiles', JSON.stringify(storedProfiles));
+      await storageService.setAsync('userProfiles', JSON.stringify(storedProfiles));
 
+      // Update local state and load profile
       setProfiles(prev => [...prev, newProfile]);
-      handleLoadProfile(newProfile);
-
+      
+      // Ensure the profile is saved before loading it
+      await new Promise(resolve => setTimeout(resolve, 100));
+      await handleLoadProfile(newProfile);
     } catch (err) {
       console.error('Parse error:', err);
       setError(err.message);
@@ -353,63 +352,59 @@ const Profiles = () => {
 
   // Add function to handle setting current profile
   const handleLoadProfile = async (profile) => {
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
-    
-    if (!storedProfiles[currentUser.id]?.[profile.id]) {
-      setError('Profile not found');
-      return;
+    try {
+      const currentUser = await authService.getCurrentUser();
+      const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
+      
+      if (!storedProfiles[currentUser?.id]?.[profile.id]) {
+        setError('Profile not found');
+        return;
+      }
+
+      // Save current profile
+      await storageService.setAsync('currentProfile', JSON.stringify(profile));
+      await storageService.setAsync(`lastLoadedProfile_${currentUser.id}`, profile.id);
+      
+      setCurrentProfileId(profile.id);
+      window.dispatchEvent(new CustomEvent('profileLoaded', {
+        detail: { profile }
+      }));
+      setError('');
+    } catch (error) {
+      console.error('Error loading profile:', error);
+      setError('Failed to load profile');
     }
-
-    // Clear any existing PDF data
-    storageService.remove(`generatedPDF_${profile.id}`);
-    storageService.remove(`pdfFileName_${profile.id}`);
-    storageService.remove(`coverLetter_${profile.id}`);
-    storageService.remove(`coverLetterFileName_${profile.id}`);
-    storageService.remove(`generatedPDF_${profile.id}_coverLetter`);
-
-    // Save current profile
-    storageService.set('currentProfile', JSON.stringify(profile));
-    storageService.set(`lastLoadedProfile_${currentUser.id}`, profile.id);
-    
-    setCurrentProfileId(profile.id);
-    window.dispatchEvent(new CustomEvent('profileLoaded', {
-      detail: { profile }
-    }));
-    setError('');
   };
 
-  const handleCopyProfile = (profileToCopy) => {
+  const handleCopyProfile = async (profileToCopy) => {
     const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
+    const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
 
     if (!storedProfiles[currentUser.id]) {
       storedProfiles[currentUser.id] = {};
     }
 
-    // Find the next available ID
     const existingIds = Object.keys(storedProfiles[currentUser.id]).map(Number);
     const nextId = Math.max(0, ...existingIds) + 1;
 
-    // Create copied profile
     const newProfile = {
       ...profileToCopy,
       id: nextId,
       metadata: {
         ...profileToCopy.metadata,
         profileName: `${profileToCopy.metadata?.profileName || profileToCopy.profileName} Copied`,
-        createdAt: getCurrentISOString(),  // Add creation time
+        createdAt: getCurrentISOString(),
         lastModified: getCurrentISOString()
       }
     };
 
     // Save to localStorage
     storedProfiles[currentUser.id][nextId] = newProfile;
-    storageService.set('userProfiles', JSON.stringify(storedProfiles));
+    await storageService.setAsync('userProfiles', JSON.stringify(storedProfiles));
 
     // Refresh profiles list and load the new profile
-    loadProfiles();
-    handleLoadProfile(newProfile);  // Add this line to automatically load the copied profile
+    await loadProfiles();
+    await handleLoadProfile(newProfile);
   };
 
   return (

@@ -12,10 +12,18 @@ const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser) {
-      setIsLoggedIn(true);
-    }
+    const checkAuth = async () => {
+      try {
+        const currentUser = await authService.getCurrentUser();
+        console.log("currentUser", currentUser);
+        setIsLoggedIn(!!currentUser);
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        setIsLoggedIn(false);
+      }
+    };
+
+    checkAuth();
   }, []);
 
   const handleLogin = (userData) => {

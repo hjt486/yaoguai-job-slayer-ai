@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { authService } from '../../services/authService';
+import { storageService } from '../../services/storageService';
 import Modal from '../common/Modal';
 
 const Settings = () => {
@@ -20,51 +21,32 @@ const Settings = () => {
 
   // Add to useEffect to load saved API settings
   useEffect(() => {
-    const user = authService.getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      setUserForm({
-        email: user.email || '',
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        password: '',
-        confirmPassword: ''
-      });
+    const loadSettings = async () => {
+      const user = await authService.getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+        setUserForm({
+          email: user.email || '',
+          firstName: user.firstName || '',
+          lastName: user.lastName || '',
+          password: '',
+          confirmPassword: ''
+        });
 
-      // Load saved API settings
-      const savedSettings = authService.getUserApiSettings(user.id);
-      if (savedSettings) {
-        setApiKey(savedSettings.apiKey || '');
-        setApiEndpoint(savedSettings.apiEndpoint || '');
-        setModelName(savedSettings.modelName || '');
+        // Load saved API settings
+        const savedSettings = await authService.getUserApiSettings(user.id);
+        if (savedSettings) {
+          setApiKey(savedSettings.apiKey || '');
+          setApiEndpoint(savedSettings.apiEndpoint || '');
+          setModelName(savedSettings.modelName || '');
+        }
       }
-    }
+    };
+
+    loadSettings();
   }, []);
 
-  // Update handleApiSubmit implementation
-  const handleApiSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!currentUser) {
-      return;
-    }
-
-    try {
-      const apiSettings = {
-        apiKey,
-        apiEndpoint,
-        modelName,
-        userId: currentUser.id
-      };
-
-      await authService.updateUserApiSettings(currentUser.id, apiSettings);
-      setShowApiSettingsModal(true);
-    } catch (error) {
-      console.error('Failed to save API settings:', error);
-    }
-  };
-
-  const handleUserSubmit = (e) => {
+  const handleUserSubmit = async (e) => {
     e.preventDefault();
     setUserError('');
 
@@ -86,7 +68,7 @@ const Settings = () => {
         updateData.password = userForm.password;
       }
 
-      const updatedUser = authService.updateUser(currentUser.id, updateData);
+      const updatedUser = await authService.updateUser(currentUser.id, updateData);
       setCurrentUser(updatedUser);
       setUserForm({ ...userForm, password: '', confirmPassword: '' });
       setShowUserSettingsModal(true)
@@ -95,12 +77,49 @@ const Settings = () => {
     }
   };
 
-  const handleSignOut = () => {
-    authService.logout();
-    if (chrome && chrome.runtime) {
-      chrome.runtime.reload();
-    } else {
-      window.location.reload();
+  const handleSignOut = async () => {
+    try {
+      const currentUser = await authService.getCurrentUser();
+      if (currentUser) {
+        // Clear all user-specific data
+        await storageService.removeAsync('currentProfile');
+        await storageService.removeAsync(`lastLoadedProfile_${currentUser.id}`);
+        await storageService.removeAsync(`userApiSettings_${currentUser.id}`);
+        await storageService.removeAsync('userProfiles');
+        
+        // Finally logout
+        await authService.logout();
+      }
+      
+      // Redirect to login page
+      window.location.href = '/login';
+    } catch (error) {
+      console.error('Error during sign out:', error);
+      // Force redirect even if there's an error
+      window.location.href = '/login';
+    }
+  };
+
+  // Add handleApiSubmit function
+  const handleApiSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!currentUser) {
+      return;
+    }
+
+    try {
+      const apiSettings = {
+        apiKey,
+        apiEndpoint,
+        modelName,
+        userId: currentUser.id
+      };
+
+      await authService.updateUserApiSettings(currentUser.id, apiSettings);
+      setShowApiSettingsModal(true);
+    } catch (error) {
+      console.error('Failed to save API settings:', error);
     }
   };
 

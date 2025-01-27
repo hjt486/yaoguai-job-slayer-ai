@@ -21,65 +21,20 @@ class AuthService {
   }
 
   // Notify all subscribers of current user state
-  notify() {
-    const currentUser = this.getCurrentUser();
+  // Update notify to be async
+  async notify() {
+    const currentUser = await this.getCurrentUser();
     this.subscribers.forEach(callback => callback(currentUser));
   }
 
-  // Modified existing methods to include notifications
-  login(credentials) {
-    const users = this.getUsers();
-    const user = users.find(u => u.email === credentials.email);
-
-    if (!user) throw new Error('User not found');
-    if (user.password !== credentials.password) throw new Error('Invalid password');
-
-    const { password, ...userWithoutPassword } = user;
-    storageService.set(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
-
-    this.notify(); // Notify subscribers after login
-    return userWithoutPassword;
-  }
-
-  logout() {
-    storageService.remove(CURRENT_USER_KEY);
-    window.dispatchEvent(new CustomEvent('logout'));
-    this.notify(); // Notify subscribers after logout
-  }
-
-  updateUser(userId, updateData) {
-    const users = this.getUsers();
-    const userIndex = users.findIndex(u => u.id === userId);
-
-    if (userIndex === -1) throw new Error('User not found');
-
-    const updatedUser = {
-      ...users[userIndex],
-      ...updateData,
-      updatedAt: new Date().toISOString()
-    };
-
-    users[userIndex] = updatedUser;
-    storageService.set(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
-
-    const currentUser = this.getCurrentUser();
-    if (currentUser?.id === userId) {
-      const { password, ...userWithoutPassword } = updatedUser;
-      storageService.set(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
-      this.notify(); // Notify if current user updated
-    }
-
-    return { ...updatedUser, password: undefined };
-  }
-
-
-  getUsers() {
-    const users = storageService.get(LOCAL_STORAGE_USERS_KEY);
+  // Update getUsers to be async
+  async getUsers() {
+    const users = await storageService.getAsync(LOCAL_STORAGE_USERS_KEY);
     return users ? JSON.parse(users) : [];
   }
 
-  register(userData) {
-    const users = this.getUsers();
+  async register(userData) {
+    const users = await this.getUsers();
 
     if (users.some(user => user.email === userData.email)) {
       throw new Error('Email already registered');
@@ -92,48 +47,77 @@ class AuthService {
     };
 
     users.push(newUser);
-    storageService.set(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
+    await storageService.setAsync(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
 
     const { password, ...userWithoutPassword } = newUser;
     return userWithoutPassword;
   }
 
-  login(credentials) {
-    const users = this.getUsers();
+  async logout() {
+    await storageService.removeAsync(CURRENT_USER_KEY);
+    window.dispatchEvent(new CustomEvent('logout'));
+    await this.notify();
+  }
+
+  // Remove duplicate updateUserApiSettings method
+  async updateUserApiSettings(userId, settings) {
+    try {
+      const allSettings = JSON.parse(await storageService.getAsync(API_SETTINGS_KEY) || '{}');
+      allSettings[userId] = settings;
+      await storageService.setAsync(API_SETTINGS_KEY, JSON.stringify(allSettings));
+      return true;
+    } catch (error) {
+      console.error('Error saving API settings:', error);
+      throw new Error('Failed to save API settings');
+    }
+  }
+
+  async login(credentials) {
+    const users = await this.getUsers();
     const user = users.find(u => u.email === credentials.email);
 
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    if (user.password !== credentials.password) {
-      throw new Error('Invalid password');
-    }
+    if (!user) throw new Error('User not found');
+    if (user.password !== credentials.password) throw new Error('Invalid password');
 
     const { password, ...userWithoutPassword } = user;
-    storageService.set(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+    await storageService.setAsync(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+
+    await this.notify(); // Make sure to await notify
     return userWithoutPassword;
   }
 
-  getCurrentUser() {
-    const user = storageService.get(CURRENT_USER_KEY);
+  async logout() {
+    await storageService.removeAsync(CURRENT_USER_KEY);
+    await storageService.removeAsync('currentProfile');
+    window.dispatchEvent(new CustomEvent('logout'));
+    await this.notify();
+  }
+  // Update getCurrentUser to be async
+  async getCurrentUser() {
+    const user = await storageService.getAsync(CURRENT_USER_KEY);
     return user ? JSON.parse(user) : null;
   }
 
-  logout() {
-    storageService.remove(CURRENT_USER_KEY);
-    storageService.remove('currentProfile');
-    // Dispatch logout event
-    window.dispatchEvent(new CustomEvent('logout'));
+  // Update other methods that use getCurrentUser
+  async login(credentials) {
+    const users = await this.getUsers();
+    const user = users.find(u => u.email === credentials.email);
+
+    if (!user) throw new Error('User not found');
+    if (user.password !== credentials.password) throw new Error('Invalid password');
+
+    const { password, ...userWithoutPassword } = user;
+    await storageService.setAsync(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+
+    this.notify(); // Notify subscribers after login
+    return userWithoutPassword;
   }
 
-  updateUser(userId, updateData) {
-    const users = this.getUsers();
+  async updateUser(userId, updateData) {
+    const users = await this.getUsers();
     const userIndex = users.findIndex(u => u.id === userId);
 
-    if (userIndex === -1) {
-      throw new Error('User not found');
-    }
+    if (userIndex === -1) throw new Error('User not found');
 
     const updatedUser = {
       ...users[userIndex],
@@ -142,37 +126,25 @@ class AuthService {
     };
 
     users[userIndex] = updatedUser;
-    storageService.set(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
+    await storageService.setAsync(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
 
-    const currentUser = this.getCurrentUser();
-    if (currentUser && currentUser.id === userId) {
+    const currentUser = await this.getCurrentUser();
+    if (currentUser?.id === userId) {
       const { password, ...userWithoutPassword } = updatedUser;
-      storageService.set(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+      await storageService.setAsync(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+      this.notify();
     }
 
-    const { password, ...userWithoutPassword } = updatedUser;
-    return userWithoutPassword;
+    return { ...updatedUser, password: undefined };
   }
 
-  getUserApiSettings(userId) {
+  async getUserApiSettings(userId) {
     try {
-      const allSettings = JSON.parse(storageService.get(API_SETTINGS_KEY) || '{}');
+      const allSettings = JSON.parse(await storageService.getAsync(API_SETTINGS_KEY) || '{}');
       return allSettings[userId] || null;
     } catch (error) {
       console.error('Error loading API settings:', error);
       return null;
-    }
-  }
-
-  updateUserApiSettings(userId, settings) {
-    try {
-      const allSettings = JSON.parse(storageService.get(API_SETTINGS_KEY) || '{}');
-      allSettings[userId] = settings;
-      storageService.set(API_SETTINGS_KEY, JSON.stringify(allSettings));
-      return true;
-    } catch (error) {
-      console.error('Error saving API settings:', error);
-      throw new Error('Failed to save API settings');
     }
   }
 }

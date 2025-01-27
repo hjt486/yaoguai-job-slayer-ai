@@ -307,20 +307,20 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
     }
 
 
-    // Store PDF in localStorage with profile-specific keys
+    // Remove duplicate storage
     const pdfData = pdf.output('dataurlstring');
-    storageService.set(`generatedPDF_${profile.id || profileId}`, pdfData);
-    storageService.set(`pdfTimestamp_${profile.id || profileId}`, new Date().toISOString());
-    storageService.set(`pdfFileName_${profile.id || profileId}`, fileName);
-
-    // Store PDF data and filename separately
-    const pdfKey = isCoverLetter ? `coverLetter_${profileId}` : `generatedPDF_${profileId}`;
-    const fileNameKey = isCoverLetter ? `coverLetterFileName_${profileId}` : `pdfFileName_${profileId}`;
-
-    // Store the base64 PDF data
-    storageService.set(pdfKey, pdfData);
-    // Store the filename separately
-    storageService.set(fileNameKey, fileName);
+    
+    if (isCoverLetter) {
+      // Store cover letter data
+      storageService.set(`coverLetter_${profileId}`, pdfData);
+      storageService.set(`coverLetterFileName_${profileId}`, fileName);
+      storageService.set(`coverLetterTimestamp_${profileId}`, new Date().toISOString());
+    } else {
+      // Store resume data
+      storageService.set(`resumePDF_${profileId}`, pdfData);
+      storageService.set(`resumeFileName_${profileId}`, fileName);
+      storageService.set(`resumeTimestamp_${profileId}`, new Date().toISOString());
+    }
 
     return true;
   } catch (error) {
@@ -330,8 +330,8 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
 };
 
 export const downloadStoredPDF = (profileId, isCoverLetter = false) => {
-  const pdfKey = isCoverLetter ? `coverLetter_${profileId}` : `generatedPDF_${profileId}`;
-  const fileNameKey = isCoverLetter ? `coverLetterFileName_${profileId}` : `pdfFileName_${profileId}`;
+  const pdfKey = isCoverLetter ? `coverLetter_${profileId}` : `resumePDF_${profileId}`;
+  const fileNameKey = isCoverLetter ? `coverLetterFileName_${profileId}` : `resumeFileName_${profileId}`;
 
   const pdfData = storageService.get(pdfKey);
   const fileName = storageService.get(fileNameKey);

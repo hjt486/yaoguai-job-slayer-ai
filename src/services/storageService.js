@@ -116,6 +116,12 @@ class StorageService {
     return true;
   }
 
+  async removeAsync(key) {
+    if (!isExtension) return this.remove(key);
+    await this.initSyncCache();
+    this.cache.delete(key);
+    return chrome.storage.local.remove(key);
+  }
 
   // Event handling
   addChangeListener(callback) {
