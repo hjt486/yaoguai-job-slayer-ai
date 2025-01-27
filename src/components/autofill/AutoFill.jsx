@@ -28,6 +28,21 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
     // 1. Create container element first
     container = document.createElement('div');
     container.className = 'pico-scope';
+
+    // Copy theme from main document
+    const updateTheme = () => {
+      const mainTheme = document.documentElement.getAttribute('data-theme');
+      container.setAttribute('data-theme', mainTheme || '');
+    };
+    updateTheme(); // Initial set
+
+    // Observe theme changes in main document
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-theme']
+    });
+
     shadowRoot.appendChild(container);
 
     // 2. Add CSS reset with proper inheritance
@@ -43,15 +58,21 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
           isolation: isolate !important;
           width: fit-content !important;
           height: fit-content !important;
+          color-scheme: light dark;
+          --yaoguai-pico-background-color: var(--pico-background-color, #ffffff);
+          --yaoguai-pico-color: var(--pico-color, inherit);
         }
 
         div.pico-scope {
-
+          all: initial; /* Reset all properties */
           display: block;
           font-family: inherit;
+          /* Explicitly inherit variables from host */
+          color: var(--yaoguai-pico-color, inherit);
+          background-color: var(--yaoguai-pico-background-color, #ffffff);
+          /* Inherit font settings */
+          font-family: inherit;
           line-height: 1.5;
-          color: inherit;
-          background: var(--yaoguai-pico-background-color, #ffffff);
         }
 
         div.pico-scope * {
@@ -68,10 +89,48 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
       .replace(/:root\b/g, 'div.pico-scope')
       .replace(/html|body/g, 'div.pico-scope')
       .replace(/--pico-/g, '--yaoguai-pico-')
+      .replace(/var\(--pico-/g, 'var(--yaoguai-pico-')
+      .replace(/:root\b/g, 'div.pico-scope')
+      .replace(/html|body/g, 'div.pico-scope')
+      .replace(/--pico-/g, '--yaoguai-pico-')
       .replace(/var\(--pico-/g, 'var(--yaoguai-pico-');
 
     // 4. Properly scope App.css with more specific selectors
     const scopedAppCss = appCss
+      // Create shadow DOM versions of the theme declarations
+      .replace(/(\[data-theme=light\],\s*):root/g, '$1div.pico-scope')
+      .replace(/:root:not\(\[data-theme=dark\]\)/g, 'div.pico-scope:not([data-theme=dark])')
+      .replace(/@media\s+\(prefers-color-scheme:\s*dark\)\s*{\s*:root:not\(\[data-theme\]\)/g,
+        '@media (prefers-color-scheme: dark) { div.pico-scope:not([data-theme])')
+      .replace(/\[data-theme=dark\]/g, 'div.pico-scope[data-theme=dark]')
+      // Then handle regular scoping
+      .replace(/html|body/g, 'div.pico-scope')
+      // Keep original :root declarations for popup
+      .replace(/(\n\/\*.*?\*\/)/g, '$1\n/* Shadow DOM override */')
+      // Variable replacements only for shadow DOM
+      .replace(/--pico-/g, '--yaoguai-pico-')
+      .replace(/var\(--pico-/g, 'var(--yaoguai-pico-')
+      // Handle theme selectors first
+      .replace(/(\[data-theme=light\],\s*):root/g, '$1div.pico-scope')
+      .replace(/:root:not\(\[data-theme=dark\]\)/g, 'div.pico-scope:not([data-theme=dark])')
+      .replace(/@media\s+\(prefers-color-scheme:\s*dark\)\s*{\s*:root:not\(\[data-theme\]\)/g,
+        '@media (prefers-color-scheme: dark) { div.pico-scope:not([data-theme])')
+      .replace(/\[data-theme=dark\]/g, 'div.pico-scope[data-theme=dark]')
+      // Then handle regular scoping
+      .replace(/html|body/g, 'div.pico-scope')
+      .replace(/\.([\w-]+)/g, '.pico-scope .$1')
+      .replace(/#([\w-]+)/g, '.pico-scope #$1')
+      .replace(/([^@{}\s,])([^{},]*){/g, '.pico-scope $1$2{')
+      .replace(/\.pico-scope \.pico-scope/g, '.pico-scope')
+      // Variable replacements
+      .replace(/--pico-/g, '--yaoguai-pico-')
+      .replace(/var\(--pico-/g, 'var(--yaoguai-pico-')
+      // First handle root variables and selectors
+      .replace(/:root\b/g, 'div.pico-scope') // Add this line
+      .replace(/html|body/g, 'div.pico-scope') // Existing line
+      // Then handle other scoping
+      .replace(/\.([\w-]+)/g, '.pico-scope .$1')
+      .replace(/#([\w-]+)/g, '.pico-scope #$1')
       // Handle class selectors
       .replace(/\.([\w-]+)/g, '.pico-scope .$1')
       // Handle ID selectors
@@ -89,13 +148,10 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
     // Add floating container specific styles
     const containerStyles = `
       .pico-scope .floating-container {
-        background: white !important;
+        background: var(--yaoguai-pico-background-color, #ffffff) !important;
         border-radius: 8px !important;
         box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
         padding: 1rem !important;
-        position: fixed !important;
-        top: 20px !important;
-        right: 20px !important;
       }
 
       .pico-scope .floating-container.expanded {
