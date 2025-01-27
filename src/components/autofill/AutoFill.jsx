@@ -25,32 +25,29 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
   if (true) {
     const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
 
-    // 1. Create theme-aware container
+    // 1. Theme-aware container setup
     container = document.createElement('div');
     container.className = 'pico-scope';
 
-    // Theme synchronization with main document
+    // Theme synchronization
     const syncTheme = () => {
-      container.setAttribute('data-theme',
-        document.documentElement.getAttribute('data-theme') || ''
-      );
+      const mainTheme = document.documentElement.getAttribute('data-theme') || '';
+      container.setAttribute('data-theme', mainTheme);
     };
-    syncTheme(); // Initial sync
-
-    // Watch for theme changes
+    syncTheme();
     new MutationObserver(syncTheme).observe(document.documentElement, {
       attributes: true,
       attributeFilter: ['data-theme']
     });
 
-    // 2. Shadow DOM styling setup
+    // 2. Style helpers
     const createStyle = css => {
       const style = document.createElement('style');
       style.textContent = css;
       return style;
     };
 
-    // Base reset and container styles
+    // 3. Base styles with CSS variables
     shadowRoot.appendChild(createStyle(`
   :host {
     position: fixed !important;
@@ -59,8 +56,6 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
     z-index: 2147483647 !important;
     contain: content !important;
     isolation: isolate !important;
-    width: fit-content !important;
-    height: fit-content !important;
     color-scheme: light dark;
     --yaoguai-pico-background-color: var(--pico-background-color, #fff);
     --yaoguai-pico-color: var(--pico-color, inherit);
@@ -82,71 +77,117 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
   }
 `));
 
-    // 3. CSS processing helpers
-    const scopeCSSText = (css, scope) => {
-      const replacements = [
-        [/:root\b/g, scope],          // Root selector
-        [/html|body/g, scope],        // HTML/body elements
-        [/--pico-/g, '--yaoguai-pico-'], // CSS variables
-        [/(\s|,)html|body/g, '$1' + scope], // Selector lists
-        [/([^{}]*){/g, `${scope} $1{`] // General scoping
-      ];
-
-      return replacements.reduce(
-        (result, [pattern, replacement]) =>
-          result.replace(pattern, replacement),
-        css
-      );
+    // 4. CSS Processing
+    const processPicoCSS = (css) => {
+      return css
+        // Preserve element selectors while scoping
+        .replace(/([^}])progress/g, '$1.pico-scope progress')
+        .replace(/([^}])\[aria-busy/g, '$1.pico-scope [aria-busy')
+        // Add shadow root scope to keyframe animations
+        .replace(/@keyframes (\w+)/g, (match, name) =>
+          `@keyframes pico-scope-${name}`
+        )
+        .replace(/(animation: ?)(\w+)/g, (match, prefix, name) =>
+          `${prefix}pico-scope-${name}`
+        )
+        // Then apply existing replacements
+        .replace(/:root(?![^:])/g, '.pico-scope')
+        .replace(/html|body/g, '.pico-scope')
+        .replace(/--pico-/g, '--yaoguai-pico-')
+        .replace(/var\(--pico-/g, 'var(--yaoguai-pico-');
     };
 
-    // Process Pico CSS
-    const scopedPico = scopeCSSText(picoCss, 'div.pico-scope');
+    const processAppCSS = (css) => {
+      return css
+        // Handle aria-busy animations
+        .replace(/@keyframes (\w+)/g, (match, name) =>
+          `@keyframes pico-scope-${name}`
+        )
+        .replace(/(animation: ?)(\w+)/g, (match, prefix, name) =>
+          `${prefix}pico-scope-${name}`
+        )
+        // Existing replacements
+        .replace(/(\[data-theme=light\],\s*):root/g, '$1.pico-scope')
+        .replace(/:root:not\(\[data-theme=dark\]\)/g, '.pico-scope:not([data-theme=dark])')
+        .replace(/@media\s+\(prefers-color-scheme:\s*dark\)\s*{\s*:root:not\(\[data-theme\]\)/g,
+          '@media (prefers-color-scheme: dark) { .pico-scope:not([data-theme])')
+        .replace(/([^{]*{)/g, '.pico-scope $1')
+        .replace(/\.pico-scope (html|body)/g, '.pico-scope')
+        .replace(/--pico-/g, '--yaoguai-pico-')
+        .replace(/var\(--pico-/g, 'var(--yaoguai-pico-')
+        .replace(/\.pico-scope \.pico-scope/g, '.pico-scope');
+    };
 
-    // Process App CSS with additional theming
-    const scopedApp = scopeCSSText(appCss, 'div.pico-scope')
-      .replace(/(\[data-theme=light\],\s*):root/g, '$1div.pico-scope')
-      .replace(/:root:not\(\[data-theme=dark\]\)/g, 'div.pico-scope:not([data-theme=dark])')
-      .replace(/@media\s+\(prefers-color-scheme:\s*dark\)\s*{\s*:root:not\(\[data-theme\]\)/g,
-        '@media (prefers-color-scheme: dark) { div.pico-scope:not([data-theme])');
+    const componentFixes = `
+      /* Progress bar fixes */
+      .pico-scope progress {
+        height: 0.5rem !important;
+        border-radius: 0 !important;
+        overflow: hidden !important;
+      }
 
-    // Container-specific overrides
-    const containerOverrides = `
-  .floating-container {
-    background: var(--yaoguai-pico-background-color) !important;
-    border-radius: 8px !important;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
-    padding: 1rem !important;
-  }
+      .pico-scope progress::-webkit-progress-bar {
+        background-color: var(--yaoguai-pico-background-color) !important;
+        border: 1px solid var(--yaoguai-pico-border-color) !important;
+      }
 
-  .floating-container.expanded {
-    width: 300px !important;
-    min-height: 200px !important;
-  }
+      .pico-scope progress::-webkit-progress-value {
+        background-color: var(--yaoguai-pico-primary) !important;
+        transition: width 0.5s ease !important;
+      }
 
-  .floating-button {
-    width: 40px !important;
-    height: 40px !important;
-    padding: 8px !important;
-    border-radius: 50% !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    background: white !important;
-    border: 1px solid #ddd !important;
-  }
+      /* Loading spinner fixes */
+      .pico-scope [aria-busy="true"]::after {
+        content: " " !important;
+        display: inline-block !important;
+        width: 1rem !important;
+        height: 1rem !important;
+        border: 2px solid currentColor !important;
+        border-radius: 50% !important;
+        border-right-color: transparent !important;
+        animation: pico-scope-spinner 0.75s linear infinite !important;
+        margin-left: 0.5rem !important;
+        vertical-align: text-bottom !important;
+      }
 
-  article {
-    margin: 0 !important;
-    padding: 1rem !important;
-  }
-`;
+      @keyframes pico-scope-spinner {
+        to { transform: rotate(360deg); }
+      }
+    `;
 
-    // 4. Assemble styles in order
+    // 5. Apply processed CSS
+    const picoStyles = processPicoCSS(picoCss);
+    const appStyles = processAppCSS(appCss);
+
+    // 6. Container-specific overrides (should come last)
+    const overrides = `
+    .floating-container {
+      background: var(--yaoguai-pico-background-color) !important;
+      border-radius: 8px !important;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
+      padding: 1rem !important;
+    }
+
+    .floating-button {
+      width: 40px !important;
+      height: 40px !important;
+      padding: 8px !important;
+      border-radius: 50% !important;
+    }
+
+    article {
+      margin: 0 !important;
+      padding: 1rem !important;
+    }
+  `;
+
+    // 7. Inject styles in correct order
     shadowRoot.append(
       container,
-      createStyle(scopedPico),
-      createStyle(scopedApp),
-      createStyle(containerOverrides)
+      createStyle(picoStyles),
+      createStyle(componentFixes), // Add component fixes
+      createStyle(appStyles),
+      createStyle(overrides)
     );
   } else {
     // DEV mode styling
