@@ -25,8 +25,8 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
   let container;
 
   // In the mountFloatingPage function's extension block:
-  // if (true) {
-  if (isExtension()) {
+  if (true) {
+  // if (isExtension()) {
     const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
 
     // 1. Create theme-aware container

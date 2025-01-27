@@ -125,12 +125,32 @@ li[role="tab"]:not([aria-selected="true"]) {
   cursor: pointer;
 }
 
+[data-tooltip] {
+  text-decoration: none !important;
+  border-bottom: none !important;
+}
+
+[data-tooltip]:hover::before {
+  font-size: var(--font-size-small)
+}
+
+[data-tooltip]:hover::after {
+  border-top-color: var(--pico-primary);
+  opacity: 0.9;
+}
+
+.tight-layout [data-tooltip]:hover::before {
+  border-top-color: var(--pico-primary);
+}
+
 .tight-layout {
   font-size: 12px;
   /* Smaller font size */
   margin: 0;
   padding: 0;
 }
+
+
 
 .tight-layout * {
   margin: 0.1em;

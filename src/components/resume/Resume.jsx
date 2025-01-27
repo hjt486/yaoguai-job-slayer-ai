@@ -140,8 +140,25 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
 
   // Update field label references in renderContent
   const renderContent = () => {
+    const handleCopy = (value, event) => {
+      if (!isEditing && value) {
+        // Get the formatted text that's displayed
+        const formattedValue = event.currentTarget.textContent;
+        navigator.clipboard.writeText(formattedValue);
+        
+        const target = event.currentTarget;
+        const originalTooltip = target.getAttribute('data-tooltip');
+        
+        target.setAttribute('data-tooltip', 'Copied!');
+        setTimeout(() => {
+          target.setAttribute('data-tooltip', originalTooltip || 'Click to copy');
+        }, 1000);
+      }
+    };
+
+    // Update click handlers to pass the event
     if (Array.isArray(data)) {
-      if (section === 'skills') {  // Changed from comparing title
+      if (section === 'skills') {
         return (
           <div className="skills-grid">
             {data.map((skill, index) => (
@@ -165,7 +182,13 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
                     </button>
                   </div>
                 ) : (
-                  <span>{skill}</span>
+                  <span 
+                    onClick={(e) => handleCopy(skill, e)} 
+                    style={{ cursor: 'pointer' }}
+                    data-tooltip="Click to copy"
+                  >
+                    {skill}
+                  </span>
                 )}
               </div>
             ))}
@@ -199,9 +222,18 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
                   {isEditing ? (
                     renderInput(key, value, index)
                   ) : (
-                    <span style={{ whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal' }}>
-                      {getFormattedDate(key, value)}
-                    </span>
+                    // In the renderContent function, update the span elements
+                        <span 
+                          onClick={(e) => handleCopy(value, e)}
+                          style={{ 
+                            whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal',
+                            cursor: 'pointer',
+                            textDecoration: 'none'  // Add this line
+                          }}
+                          data-tooltip="Click to copy"
+                        >
+                          {getFormattedDate(key, value)}
+                        </span>
                   )}
                 </div>
               ))}
@@ -224,7 +256,13 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
           {isEditing ? (
             renderInput(key, value)
           ) : (
-            <span style={{ whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal' }}>
+            <span 
+              onClick={(e) => handleCopy(value, e)}  // Add event parameter here
+              style={{ 
+                whiteSpace: shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal',
+                cursor: 'pointer'
+              }}
+            >
               {getFormattedDate(key, value)}
             </span>
           )}
@@ -247,7 +285,14 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
           }}
         />
       ) : (
-        <p className="pre-wrap">{data}</p>
+        <p 
+          className="pre-wrap" 
+          onClick={(e) => handleCopy(data, e)}
+          style={{ cursor: 'pointer' }}
+          data-tooltip="Click to copy"
+        >
+          {data}
+        </p>
       );
     }
   };
