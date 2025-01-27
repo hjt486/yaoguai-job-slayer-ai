@@ -579,7 +579,6 @@ nav {
   background: var(--yaoguai-pico-background-color) !important;
   border-radius: 8px !important;
   box-shadow: 0 2px 10px rgba(0,0,0,0.1) !important;
-  padding: 1rem !important;
   height: 100% !important;
   overflow-y: auto !important;
 }
@@ -731,6 +730,8 @@ nav {
 /* DEBUG Style Starts */
 .test-class {
   border: 1px solid var(--pico-primary-background) !important;
+  margin: 0;
+  padding: 0;
 }
 
 /* DEBUG Style Ends */

@@ -22,7 +22,8 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
   let container;
 
   // In the mountFloatingPage function's extension block:
-  if (true) {
+  // if (true) {
+  if (isExtension()) {
     const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
 
     // 1. Create theme-aware container
@@ -62,7 +63,7 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
         width: fit-content !important;
         height: fit-content !important;
         background: transparent !important;
-        transform: translate(20px, 20px);
+        transform: translate(-20px, 20px);
       }
     `));
 
@@ -118,10 +119,15 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
           ${appCss}
           #yaoguai-host { 
             position: fixed !important;
-            top: 20px !important;
-            right: 20px !important;
+            top: 0 !important;
+            right: 0 !important;
             z-index: 2147483647 !important;
             contain: content !important;
+            isolation: isolate !important;
+            width: fit-content !important;
+            height: fit-content !important;
+            transform: translate(-20px, 20px);
+            background: white !important;
           }`
       })
     );
@@ -208,11 +214,12 @@ export const FloatingPage = ({ onClose }) => {
   const hasMoved = useRef(false); // New ref to track actual movement
 
   const handleMouseDown = (e) => {
-    if (!isExpanded) {
+    // Allow dragging on both collapsed state and header
+    if (!isExpanded || e.target.closest('header')) {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(true);
-      hasMoved.current = false; // Reset movement tracker
+      hasMoved.current = false;
       dragOffset.current = {
         x: e.clientX - position.x,
         y: e.clientY - position.y
@@ -250,6 +257,7 @@ export const FloatingPage = ({ onClose }) => {
     wasDragging.current = false;
   };
 
+  // Remove the second useEffect and update the first one
   useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -259,7 +267,7 @@ export const FloatingPage = ({ onClose }) => {
       const updateHostPosition = () => {
         const host = document.getElementById('yaoguai-host');
         if (host) {
-          host.style.transform = `translate(${position.x + 20}px, ${position.y + 20}px)`;
+          host.style.transform = `translate(${position.x - 20}px, ${position.y + 20}px)`;
         }
       };
       updateHostPosition();
@@ -276,14 +284,12 @@ export const FloatingPage = ({ onClose }) => {
       <div
         id="yaoguai-floating-container"
         className={`floating-container ${isExpanded ? 'expanded' : 'collapsed'} tight-layout`}
-        style={{
-          cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab'),
-        }}
+        style={{ cursor: isDragging ? 'grabbing' : (isExpanded ? 'default' : 'grab') }}
         onMouseDown={handleMouseDown}
       >
         {isExpanded ? (
-          <article style={{ margin: 0 }} className='test-class'>
-            <header>
+          <article style={{ margin: 0 }} className='test-class tight-layout'>
+            <header style={{ cursor: 'grab' }}>
               <nav>
                 <ul>
                   <li>{SITE_LOGO()}</li>
@@ -364,9 +370,7 @@ export const FloatingPage = ({ onClose }) => {
           <button
             className="floating-button outline"
             onClick={handleClick}
-            style={{
-              cursor: isDragging ? 'grabbing' : 'grab',
-            }}
+            style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
           >{SITE_LOGO()}</button>
         )}
       </div>
