@@ -61,13 +61,24 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
         isolation: isolate !important;
         width: fit-content !important;
         height: fit-content !important;
+        background: transparent !important;
       }
 
       .pico-scope {
+        background: transparent !important;
       }
 
       .pico-scope * {
 
+      }
+
+      .pico-scope .floating-container article {
+        border-radius: 8px !important;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
+      }
+
+      .pico-scope .floating-button {
+        background: white !important;
       }
     `));
 
@@ -115,7 +126,7 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
       createStyle(scopedApp),
     );
   } else {
-    // DEV mode styling
+    // DEV mode styling, NOT USED
     document.head.appendChild(
       Object.assign(document.createElement('style'), {
         textContent: `
