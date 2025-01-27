@@ -5,80 +5,43 @@ const API_SETTINGS_KEY = 'userApiSettings';
 
 class AuthService {
   constructor() {
-    this.subscribers = []; // Array to hold subscription callbacks
+    this.subscribers = [];
+    this.isExtension = typeof chrome !== 'undefined' && chrome.runtime;
   }
 
-  // Add subscription methods
-  subscribe(callback) {
-    this.subscribers.push(callback);
-    // Return unsubscribe function
-    return () => this.unsubscribe(callback);
-  }
-
-  unsubscribe(callback) {
-    this.subscribers = this.subscribers.filter(sub => sub !== callback);
-  }
-
-  // Notify all subscribers of current user state
-  notify() {
-    const currentUser = this.getCurrentUser();
-    this.subscribers.forEach(callback => callback(currentUser));
-  }
-
-  // Modified existing methods to include notifications
-  login(credentials) {
-    const users = this.getUsers();
-    const user = users.find(u => u.email === credentials.email);
-
-    if (!user) throw new Error('User not found');
-    if (user.password !== credentials.password) throw new Error('Invalid password');
-
-    const { password, ...userWithoutPassword } = user;
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
-
-    this.notify(); // Notify subscribers after login
-    return userWithoutPassword;
-  }
-
-  logout() {
-    localStorage.removeItem(CURRENT_USER_KEY);
-    window.dispatchEvent(new CustomEvent('logout'));
-    this.notify(); // Notify subscribers after logout
-  }
-
-  updateUser(userId, updateData) {
-    const users = this.getUsers();
-    const userIndex = users.findIndex(u => u.id === userId);
-
-    if (userIndex === -1) throw new Error('User not found');
-
-    const updatedUser = {
-      ...users[userIndex],
-      ...updateData,
-      updatedAt: new Date().toISOString()
-    };
-
-    users[userIndex] = updatedUser;
-    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
-
-    const currentUser = this.getCurrentUser();
-    if (currentUser?.id === userId) {
-      const { password, ...userWithoutPassword } = updatedUser;
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
-      this.notify(); // Notify if current user updated
+  // Storage helper methods
+  async getFromStorage(key) {
+    if (this.isExtension) {
+      const result = await chrome.storage.local.get(key);
+      return result[key];
     }
-
-    return { ...updatedUser, password: undefined };
+    return localStorage.getItem(key);
   }
 
+  async setToStorage(key, value) {
+    if (this.isExtension) {
+      await chrome.storage.local.set({ [key]: value });
+    } else {
+      localStorage.setItem(key, value);
+    }
+  }
 
-  getUsers() {
-    const users = localStorage.getItem(LOCAL_STORAGE_USERS_KEY);
+  async removeFromStorage(key) {
+    if (this.isExtension) {
+      await chrome.storage.local.remove(key);
+    } else {
+      localStorage.removeItem(key);
+    }
+  }
+
+  // Update existing methods to use storage helpers
+  async getUsers() {
+    const users = await this.getFromStorage(LOCAL_STORAGE_USERS_KEY);
     return users ? JSON.parse(users) : [];
   }
 
-  register(userData) {
-    const users = this.getUsers();
+  async register(userData) {
+    const users = await this.getUsers();
 
     if (users.some(user => user.email === userData.email)) {
       throw new Error('Email already registered');
@@ -91,48 +54,43 @@ class AuthService {
     };
 
     users.push(newUser);
-    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
+    await this.setToStorage(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
 
     const { password, ...userWithoutPassword } = newUser;
     return userWithoutPassword;
   }
 
-  login(credentials) {
-    const users = this.getUsers();
+  async login(credentials) {
+    const users = await this.getUsers();
     const user = users.find(u => u.email === credentials.email);
 
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    if (user.password !== credentials.password) {
-      throw new Error('Invalid password');
-    }
+    if (!user) throw new Error('User not found');
+    if (user.password !== credentials.password) throw new Error('Invalid password');
 
     const { password, ...userWithoutPassword } = user;
-    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+    await this.setToStorage(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+
+    this.notify();
     return userWithoutPassword;
   }
 
-  getCurrentUser() {
-    const user = localStorage.getItem(CURRENT_USER_KEY);
+  async logout() {
+    await this.removeFromStorage(CURRENT_USER_KEY);
+    await this.removeFromStorage('currentProfile');
+    window.dispatchEvent(new CustomEvent('logout'));
+    this.notify();
+  }
+
+  async getCurrentUser() {
+    const user = await this.getFromStorage(CURRENT_USER_KEY);
     return user ? JSON.parse(user) : null;
   }
 
-  logout() {
-    localStorage.removeItem(CURRENT_USER_KEY);
-    localStorage.removeItem('currentProfile');
-    // Dispatch logout event
-    window.dispatchEvent(new CustomEvent('logout'));
-  }
-
-  updateUser(userId, updateData) {
-    const users = this.getUsers();
+  async updateUser(userId, updateData) {
+    const users = await this.getUsers();
     const userIndex = users.findIndex(u => u.id === userId);
 
-    if (userIndex === -1) {
-      throw new Error('User not found');
-    }
+    if (userIndex === -1) throw new Error('User not found');
 
     const updatedUser = {
       ...users[userIndex],
@@ -141,33 +99,35 @@ class AuthService {
     };
 
     users[userIndex] = updatedUser;
-    localStorage.setItem(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
+    await this.setToStorage(LOCAL_STORAGE_USERS_KEY, JSON.stringify(users));
 
-    const currentUser = this.getCurrentUser();
-    if (currentUser && currentUser.id === userId) {
+    const currentUser = await this.getCurrentUser();
+    if (currentUser?.id === userId) {
       const { password, ...userWithoutPassword } = updatedUser;
-      localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+      await this.setToStorage(CURRENT_USER_KEY, JSON.stringify(userWithoutPassword));
+      this.notify();
     }
 
-    const { password, ...userWithoutPassword } = updatedUser;
-    return userWithoutPassword;
+    return { ...updatedUser, password: undefined };
   }
 
-  getUserApiSettings(userId) {
+  async getUserApiSettings(userId) {
     try {
-      const allSettings = JSON.parse(localStorage.getItem(API_SETTINGS_KEY) || '{}');
-      return allSettings[userId] || null;
+      const allSettings = await this.getFromStorage(API_SETTINGS_KEY);
+      const parsedSettings = allSettings ? JSON.parse(allSettings) : {};
+      return parsedSettings[userId] || null;
     } catch (error) {
       console.error('Error loading API settings:', error);
       return null;
     }
   }
 
-  updateUserApiSettings(userId, settings) {
+  async updateUserApiSettings(userId, settings) {
     try {
-      const allSettings = JSON.parse(localStorage.getItem(API_SETTINGS_KEY) || '{}');
-      allSettings[userId] = settings;
-      localStorage.setItem(API_SETTINGS_KEY, JSON.stringify(allSettings));
+      const allSettings = await this.getFromStorage(API_SETTINGS_KEY) || '{}';
+      const parsedSettings = JSON.parse(allSettings);
+      parsedSettings[userId] = settings;
+      await this.setToStorage(API_SETTINGS_KEY, JSON.stringify(parsedSettings));
       return true;
     } catch (error) {
       console.error('Error saving API settings:', error);

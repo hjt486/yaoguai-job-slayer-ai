@@ -30,22 +30,6 @@ const Profiles = () => {
     fileInputRef.current.click();
   };
 
-  // Move loadProfiles before useEffect
-  const loadProfiles = () => {
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-    const userProfiles = storedProfiles[currentUser.id] || {};
-
-    const profilesArray = Object.values(userProfiles).sort((a, b) => {
-      if (a.id === 1) return -1;
-      if (b.id === 1) return 1;
-      return 0;
-    });
-
-    // console.log('Loading profiles:', profilesArray);
-    setProfiles(profilesArray);
-  };
-
   // Add handler for input click
   const handleInputClick = () => {
     setShowPasteDialog(true);
@@ -60,63 +44,151 @@ const Profiles = () => {
     }
   };
 
-  useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-    const lastLoadedProfileId = localStorage.getItem(`lastLoadedProfile_${currentUser.id}`);
-
-    // Clear all user-specific data if no profiles exist for this user
-    if (!storedProfiles[currentUser.id]) {
-      localStorage.removeItem('currentProfile');
-      setCurrentProfileId(null);
-      setSelectedFile(null);
-      setResumeName('');
-      setPastedResume('');
-    } else if (lastLoadedProfileId && storedProfiles[currentUser.id][lastLoadedProfileId]) {
-      // Load the last used profile if it exists
-      handleLoadProfile(storedProfiles[currentUser.id][lastLoadedProfileId]);
-    } else {
-      // Load the first available profile as fallback
-      const firstProfile = Object.values(storedProfiles[currentUser.id])[0];
-      if (firstProfile) {
-        handleLoadProfile(firstProfile);
+  // Add storage helper at the top
+  const isExtension = typeof chrome !== 'undefined' && chrome.runtime;
+  
+  const storageHelper = {
+    async get(key) {
+      if (isExtension) {
+        const result = await chrome.storage.local.get(key);
+        return result[key];
+      }
+      return localStorage.getItem(key);
+    },
+  
+    async set(key, value) {
+      if (isExtension) {
+        await chrome.storage.local.set({ [key]: value });
+      } else {
+        localStorage.setItem(key, value);
+      }
+    },
+  
+    async remove(key) {
+      if (isExtension) {
+        await chrome.storage.local.remove(key);
+      } else {
+        localStorage.removeItem(key);
       }
     }
-
-    loadProfiles();
-
-    // Add listener for profile updates
-    const handleProfileUpdate = (e) => {
-      console.log('Profile update received:', e.detail.profile);
-      loadProfiles();
+  };
+  
+  // Update loadProfiles function
+  const loadProfiles = async () => {
+    const currentUser = await authService.getCurrentUser();
+    const storedProfilesStr = await storageHelper.get('userProfiles');
+    const storedProfiles = JSON.parse(storedProfilesStr || '{}');
+    const userProfiles = storedProfiles[currentUser.id] || {};
+  
+    const profilesArray = Object.values(userProfiles).sort((a, b) => {
+      if (a.id === 1) return -1;
+      if (b.id === 1) return 1;
+      return 0;
+    });
+  
+    setProfiles(profilesArray);
+  };
+  
+  // Update useEffect
+  useEffect(() => {
+    const initializeProfiles = async () => {
+      const currentUser = await authService.getCurrentUser();
+      const storedProfilesStr = await storageHelper.get('userProfiles');
+      const storedProfiles = JSON.parse(storedProfilesStr || '{}');
+      const lastLoadedProfileId = await storageHelper.get(`lastLoadedProfile_${currentUser.id}`);
+  
+      if (!storedProfiles[currentUser.id]) {
+        await storageHelper.remove('currentProfile');
+        setCurrentProfileId(null);
+        setSelectedFile(null);
+        setResumeName('');
+        setPastedResume('');
+      } else if (lastLoadedProfileId && storedProfiles[currentUser.id][lastLoadedProfileId]) {
+        await handleLoadProfile(storedProfiles[currentUser.id][lastLoadedProfileId]);
+      } else {
+        const firstProfile = Object.values(storedProfiles[currentUser.id])[0];
+        if (firstProfile) {
+          await handleLoadProfile(firstProfile);
+        }
+      }
+  
+      await loadProfiles();
+    };
+  
+    initializeProfiles();
+  
+    const handleProfileUpdate = async (e) => {
+      await loadProfiles();
       setCurrentProfileId(e.detail.profile.id);
     };
-
-    const handleStorageChange = () => {
-      loadProfiles();
-      const updatedProfile = JSON.parse(localStorage.getItem('currentProfile'));
+  
+    const handleStorageChange = async () => {
+      await loadProfiles();
+      const updatedProfile = JSON.parse(await storageHelper.get('currentProfile'));
       if (updatedProfile) {
         setCurrentProfileId(updatedProfile.id);
       }
     };
-
-    window.addEventListener('profileLoaded', handleProfileUpdate);
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('profileLoaded', handleProfileUpdate);
-      window.removeEventListener('storage', handleStorageChange);
-    };
+  
+    if (!isExtension) {
+      window.addEventListener('profileLoaded', handleProfileUpdate);
+      window.addEventListener('storage', handleStorageChange);
+  
+      return () => {
+        window.removeEventListener('profileLoaded', handleProfileUpdate);
+        window.removeEventListener('storage', handleStorageChange);
+      };
+    }
   }, []);
-
-
-  // Modify handleFileChange
+  
+  // Update handleDeleteProfile
+  const handleDeleteProfile = async (id) => {
+    const currentUser = await authService.getCurrentUser();
+    const storedProfilesStr = await storageHelper.get('userProfiles');
+    const storedProfiles = JSON.parse(storedProfilesStr || '{}');
+  
+    if (storedProfiles[currentUser.id]) {
+      delete storedProfiles[currentUser.id][id];
+      await storageHelper.set('userProfiles', JSON.stringify(storedProfiles));
+  
+      // Remove associated data
+      await Promise.all([
+        storageHelper.remove(`resume_${id}`),
+        storageHelper.remove(`generatedPDF_${id}`),
+        storageHelper.remove(`pdfFileName_${id}`),
+        storageHelper.remove(`coverLetter_${id}`),
+        storageHelper.remove(`coverLetterFileName_${id}`)
+      ]);
+  
+      const currentProfile = JSON.parse(await storageHelper.get('currentProfile'));
+      if (currentProfile && currentProfile.id === id) {
+        const remainingProfiles = Object.values(storedProfiles[currentUser.id]);
+        const sortedProfiles = remainingProfiles.sort((a, b) => b.id - a.id);
+        const nextProfile = sortedProfiles.find(p => p.id < id);
+  
+        if (nextProfile) {
+          await handleLoadProfile(nextProfile);
+        } else if (sortedProfiles.length > 0) {
+          await handleLoadProfile(sortedProfiles[0]);
+        } else {
+          await storageHelper.remove('currentProfile');
+          setCurrentProfileId(null);
+          setSelectedFile(null);
+          setResumeName('');
+        }
+      }
+  
+      await loadProfiles();
+    }
+  };
+  
+  // Update handleFileChange to use async storage
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (file && allowedFileTypes.includes(file.type)) {
       setSelectedFile(file);
       setResumeName(file.name);
-      setPastedResume(''); // Clear any pasted resume
+      setPastedResume('');
       setError('');
     } else {
       setSelectedFile(null);
@@ -126,62 +198,21 @@ const Profiles = () => {
     }
   };
 
-
-  const handleDeleteProfile = (id) => {
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-
-    if (storedProfiles[currentUser.id]) {
-      // Remove profile from userProfiles
-      delete storedProfiles[currentUser.id][id];
-      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
-
-      // Remove associated data
-      localStorage.removeItem(`resume_${id}`);
-      localStorage.removeItem(`generatedPDF_${id}`);
-      localStorage.removeItem(`pdfFileName_${id}`);
-      localStorage.removeItem(`coverLetter_${id}`);
-      localStorage.removeItem(`coverLetterFileName_${id}`);
-
-      // If the deleted profile was the current profile
-      const currentProfile = JSON.parse(localStorage.getItem('currentProfile'));
-      if (currentProfile && currentProfile.id === id) {
-        // Find profile with next lower ID
-        const remainingProfiles = Object.values(storedProfiles[currentUser.id]);
-        const sortedProfiles = remainingProfiles.sort((a, b) => b.id - a.id);
-        const nextProfile = sortedProfiles.find(p => p.id < id);
-
-        if (nextProfile) {
-          handleLoadProfile(nextProfile);
-        } else if (sortedProfiles.length > 0) {
-          // If no lower ID found, take the highest ID
-          handleLoadProfile(sortedProfiles[0]);
-        } else {
-          localStorage.removeItem('currentProfile');
-          setCurrentProfileId(null);
-          setSelectedFile(null);
-          setResumeName('');
-        }
-      }
-
-      loadProfiles();
-    }
-  };
-
-  // Update handleParse to handle profile updates
+  // Update handleParse to use storageHelper
+  // Update handleParse to properly handle API settings
   const handleParse = async () => {
     if (!selectedFile && !pastedResume) return;
     setIsParsing(true);
     setError('');
-
+  
     try {
-      const currentUser = authService.getCurrentUser();
-      const apiSettings = authService.getUserApiSettings(currentUser.id);
-
-      if (!apiSettings) {
-        throw new Error('Please configure API settings first');
+      const currentUser = await authService.getCurrentUser();
+      const apiSettings = await authService.getUserApiSettings(currentUser.id);
+  
+      if (!apiSettings?.apiKey) {
+        throw new Error('Please configure your API key in settings first');
       }
-
+  
       let parsedContent;
       if (selectedFile) {
         const parsedDoc = await parseDocument(selectedFile);
@@ -189,17 +220,17 @@ const Profiles = () => {
       } else {
         parsedContent = pastedResume;
       }
-
+  
       const aiResponse = await aiService.parseResume(apiSettings, parsedContent);
-
+  
       // Extract JSON from AI response
       const content = aiResponse.choices[0].message.content;
       const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/);
-
+  
       if (!jsonMatch) {
         throw new Error('Could not extract JSON from AI response');
       }
-
+  
       let resumeData;
       try {
         resumeData = JSON.parse(jsonMatch[1]);
@@ -207,16 +238,16 @@ const Profiles = () => {
         console.error('JSON parse error:', jsonMatch[1]);
         throw new Error('Failed to parse AI response into valid JSON');
       }
-
-      // Find the next available ID
-      const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+  
+      const storedProfilesStr = await storageHelper.get('userProfiles');
+      const storedProfiles = JSON.parse(storedProfilesStr || '{}');
       if (!storedProfiles[currentUser.id]) {
         storedProfiles[currentUser.id] = {};
       }
+  
       const existingIds = Object.keys(storedProfiles[currentUser.id]).map(Number);
       const nextId = Math.max(0, ...existingIds) + 1;
-
-      // Create new profile with parsed data
+  
       const newProfile = {
         id: nextId,
         ...DEFAULT_PROFILE_STRUCTURE,
@@ -230,46 +261,42 @@ const Profiles = () => {
           resumeName: resumeName
         }
       };
-
-      // Save the resume file if it exists
-      if (selectedFile) {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const base64File = reader.result;
+  
+      // Save resume file using async/await
+      if (selectedFile || pastedResume) {
+        const saveResumeFile = async () => {
+          const content = selectedFile ? 
+            await new Promise(resolve => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(selectedFile);
+            }) :
+            await new Promise(resolve => {
+              const blob = new Blob([pastedResume], { type: 'text/plain' });
+              const reader = new FileReader();
+              reader.onload = () => resolve(reader.result);
+              reader.readAsDataURL(blob);
+            });
+  
           const resumeFileData = {
-            name: selectedFile.name,
-            type: selectedFile.type,
-            content: base64File,
+            name: selectedFile ? selectedFile.name : 'pasted_resume.txt',
+            type: selectedFile ? selectedFile.type : 'text/plain',
+            content,
             timestamp: new Date().toISOString(),
             profileId: newProfile.id
           };
-          localStorage.setItem(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
+  
+          await storageHelper.set(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
         };
-        reader.readAsDataURL(selectedFile);
-      } else if (pastedResume) {
-        // Save pasted resume as text file
-        const blob = new Blob([pastedResume], { type: 'text/plain' });
-        const reader = new FileReader();
-        reader.onload = () => {
-          const resumeFileData = {
-            name: 'pasted_resume.txt',
-            type: 'text/plain',
-            content: reader.result,
-            timestamp: new Date().toISOString(),
-            profileId: newProfile.id
-          };
-          localStorage.setItem(`resume_${newProfile.id}`, JSON.stringify(resumeFileData));
-        };
-        reader.readAsDataURL(blob);
+  
+        await saveResumeFile();
       }
-
-      // Update localStorage and state
+  
       storedProfiles[currentUser.id][nextId] = newProfile;
-      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
-      
+      await storageHelper.set('userProfiles', JSON.stringify(storedProfiles));
+  
       setProfiles(prev => [...prev, newProfile]);
-      handleLoadProfile(newProfile);
-
+      await handleLoadProfile(newProfile);
     } catch (err) {
       console.error('Parse error:', err);
       setError(err.message);
@@ -277,40 +304,44 @@ const Profiles = () => {
       setIsParsing(false);
     }
   };
-
+  
   // Add function to handle setting current profile
-  const handleLoadProfile = (profile) => {
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+  // Update handleLoadProfile to use async storage
+  const handleLoadProfile = async (profile) => {
+    const currentUser = await authService.getCurrentUser();
+    const storedProfilesStr = await storageHelper.get('userProfiles');
+    const storedProfiles = JSON.parse(storedProfilesStr || '{}');
     
     // Verify profile belongs to current user
     if (!storedProfiles[currentUser.id]?.[profile.id]) {
       setError('Profile not found');
       return;
     }
-
-    localStorage.setItem('currentProfile', JSON.stringify(profile));
-    localStorage.setItem(`lastLoadedProfile_${currentUser.id}`, profile.id);
+  
+    await storageHelper.set('currentProfile', JSON.stringify(profile));
+    await storageHelper.set(`lastLoadedProfile_${currentUser.id}`, profile.id.toString());
     setCurrentProfileId(profile.id);
-    window.dispatchEvent(new CustomEvent('profileLoaded', {
-      detail: { profile }
-    }));
+    
+    if (!isExtension) {
+      window.dispatchEvent(new CustomEvent('profileLoaded', {
+        detail: { profile }
+      }));
+    }
     setError('');
   };
 
-  const handleCreateProfile = () => {
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-
+  const handleCreateProfile = async () => {
+    const currentUser = await authService.getCurrentUser();
+    const storedProfilesStr = await storageHelper.get('userProfiles');
+    const storedProfiles = JSON.parse(storedProfilesStr || '{}');
+  
     if (!storedProfiles[currentUser.id]) {
       storedProfiles[currentUser.id] = {};
     }
-
-    // Find the next available ID
+  
     const existingIds = Object.keys(storedProfiles[currentUser.id]).map(Number);
     const nextId = Math.max(0, ...existingIds) + 1;
-
-    // Create new profile
+  
     const newProfile = {
       id: nextId,
       ...DEFAULT_PROFILE_STRUCTURE,
@@ -321,47 +352,42 @@ const Profiles = () => {
         lastModified: getCurrentISOString()
       }
     };
-
-    // Save to localStorage
+  
     storedProfiles[currentUser.id][nextId] = newProfile;
-    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
-
-    // Refresh profiles list and load the new profile
-    loadProfiles();
-    handleLoadProfile(newProfile);  // Add this line to automatically load the new profile
+    await storageHelper.set('userProfiles', JSON.stringify(storedProfiles));
+  
+    await loadProfiles();
+    await handleLoadProfile(newProfile);
   };
 
-  const handleCopyProfile = (profileToCopy) => {
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-
+  const handleCopyProfile = async (profileToCopy) => {
+    const currentUser = await authService.getCurrentUser();
+    const storedProfilesStr = await storageHelper.get('userProfiles');
+    const storedProfiles = JSON.parse(storedProfilesStr || '{}');
+  
     if (!storedProfiles[currentUser.id]) {
       storedProfiles[currentUser.id] = {};
     }
-
-    // Find the next available ID
+  
     const existingIds = Object.keys(storedProfiles[currentUser.id]).map(Number);
     const nextId = Math.max(0, ...existingIds) + 1;
-
-    // Create copied profile
+  
     const newProfile = {
       ...profileToCopy,
       id: nextId,
       metadata: {
         ...profileToCopy.metadata,
         profileName: `${profileToCopy.metadata?.profileName || profileToCopy.profileName} Copied`,
-        createdAt: getCurrentISOString(),  // Add creation time
+        createdAt: getCurrentISOString(),
         lastModified: getCurrentISOString()
       }
     };
-
-    // Save to localStorage
+  
     storedProfiles[currentUser.id][nextId] = newProfile;
-    localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
-
-    // Refresh profiles list and load the new profile
-    loadProfiles();
-    handleLoadProfile(newProfile);  // Add this line to automatically load the copied profile
+    await storageHelper.set('userProfiles', JSON.stringify(storedProfiles));
+  
+    await loadProfiles();
+    await handleLoadProfile(newProfile);
   };
 
   return (
@@ -457,7 +483,7 @@ const Profiles = () => {
           <div className='grid-vertical'>
             <button
               className='button-full'
-              onClick={() => handleLoadProfile(profile)}
+              onClick={() => handleLoadProfile(profile).catch(err => setError(err.message))}
               disabled={profile.id === currentProfileId}
             >
               {profile.id === currentProfileId ? 'Loaded' : 'Load'}

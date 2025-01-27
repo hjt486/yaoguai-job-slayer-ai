@@ -4,96 +4,79 @@ import { aiService } from '../common/aiService';
 import { LoadingButton } from '../common/LoadingButton';
 import Modal from '../common/Modal';
 
+// Add storage helper at the top
+const isExtension = typeof chrome !== 'undefined' && chrome.runtime;
+
+const storageHelper = {
+  async get(key) {
+    if (isExtension) {
+      const result = await chrome.storage.local.get(key);
+      return result[key];
+    }
+    return localStorage.getItem(key);
+  },
+
+  async set(key, value) {
+    if (isExtension) {
+      await chrome.storage.local.set({ [key]: value });
+    } else {
+      localStorage.setItem(key, value);
+    }
+  }
+};
+
 const Match = ({ setActiveTab }) => {
-  const [currentProfile, setCurrentProfile] = useState(() => {
-    const savedProfile = localStorage.getItem('currentProfile');
-    return savedProfile ? JSON.parse(savedProfile) : null;
-  });
+  const [currentProfile, setCurrentProfile] = useState(null);
+  const [jobDescription, setJobDescription] = useState('');
+  const [analysisResults, setAnalysisResults] = useState(null);
 
-  const [jobDescription, setJobDescription] = useState(() => {
-    const currentUser = authService.getCurrentUser();
-    const savedJob = localStorage.getItem(`jobDescription_${currentUser?.id}_${currentProfile?.id}`);
-    return savedJob || '';
-  });
+  // Load initial data
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const currentUser = await authService.getCurrentUser();
+      const savedProfile = await storageHelper.get('currentProfile');
+      const profile = savedProfile ? JSON.parse(savedProfile) : null;
+      setCurrentProfile(profile);
 
-  const [analysisResults, setAnalysisResults] = useState(() => {
-    const currentUser = authService.getCurrentUser();
-    const savedResults = localStorage.getItem(`analysisResults_${currentUser?.id}_${currentProfile?.id}`);
-    return savedResults ? JSON.parse(savedResults) : null;
-  });
+      if (currentUser?.id && profile?.id) {
+        const savedJob = await storageHelper.get(`jobDescription_${currentUser.id}_${profile.id}`);
+        const savedResults = await storageHelper.get(`analysisResults_${currentUser.id}_${profile.id}`);
+        
+        setJobDescription(savedJob || '');
+        setAnalysisResults(savedResults ? JSON.parse(savedResults) : null);
+      }
+    };
 
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [error, setError] = useState('');
+    loadInitialData();
+  }, []);
 
-  // Update localStorage when job description changes
-  const handleJobDescriptionChange = (e) => {
+  // Update storage when job description changes
+  const handleJobDescriptionChange = async (e) => {
     const newValue = e.target.value;
     setJobDescription(newValue);
 
-    const currentUser = authService.getCurrentUser();
+    const currentUser = await authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id) {
-      localStorage.setItem(`jobDescription_${currentUser.id}_${currentProfile.id}`, newValue);
+      await storageHelper.set(`jobDescription_${currentUser.id}_${currentProfile.id}`, newValue);
     }
   };
 
-  // Update localStorage when analysis results change
+  // Update storage when analysis results change
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser?.id && currentProfile?.id && analysisResults) {
-      localStorage.setItem(
-        `analysisResults_${currentUser.id}_${currentProfile.id}`,
-        JSON.stringify(analysisResults)
-      );
-    }
+    const updateStorage = async () => {
+      const currentUser = await authService.getCurrentUser();
+      if (currentUser?.id && currentProfile?.id && analysisResults) {
+        await storageHelper.set(
+          `analysisResults_${currentUser.id}_${currentProfile.id}`,
+          JSON.stringify(analysisResults)
+        );
+      }
+    };
+
+    updateStorage();
   }, [analysisResults, currentProfile]);
 
-  // Clear stored data when profile changes
-  useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser?.id && currentProfile?.id) {
-      const savedJob = localStorage.getItem(`jobDescription_${currentUser.id}_${currentProfile.id}`);
-      const savedResults = localStorage.getItem(`analysisResults_${currentUser.id}_${currentProfile.id}`);
-
-      setJobDescription(savedJob || '');
-      setAnalysisResults(savedResults ? JSON.parse(savedResults) : null);
-    }
-  }, [currentProfile]);
-
-  const handleAnalyze = async () => {
-    setIsAnalyzing(true);
-    setError('');
-
-    try {
-      if (!currentProfile) {
-        throw new Error('Please select a profile first');
-      }
-
-      const currentUser = authService.getCurrentUser();
-      const apiSettings = authService.getUserApiSettings(currentUser.id);
-
-      if (!apiSettings) {
-        throw new Error('Please configure API settings first');
-      }
-
-      if (!jobDescription.trim()) {
-        throw new Error('Please enter a job description');
-      }
-
-      const analysisData = await aiService.analyzeJobMatch(apiSettings, currentProfile, jobDescription);
-      setAnalysisResults(analysisData);
-    } catch (err) {
-      console.error('Analysis error:', err);
-      setError(err.message);
-    } finally {
-      setIsAnalyzing(false);
-    }
-  };
-
-  // In handleGenerateProfile, update the success state
-  // Replace showSuccess state with showSuccessModal
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  // Update handleGenerateProfile to use modal
+  // Update handleGenerateProfile
   const handleGenerateProfile = async () => {
     setError('');
 
@@ -102,17 +85,16 @@ const Match = ({ setActiveTab }) => {
         throw new Error('No analysis results available');
       }
 
-      const currentUser = authService.getCurrentUser();
+      const currentUser = await authService.getCurrentUser();
       if (!currentUser?.id) {
         throw new Error('Please log in first');
       }
 
-      const apiSettings = authService.getUserApiSettings(currentUser.id);
+      const apiSettings = await authService.getUserApiSettings(currentUser.id);
       if (!apiSettings) {
         throw new Error('Please configure API settings first');
       }
 
-      // Generate enhanced profile using AI
       const enhancedProfile = await aiService.generateEnhancedProfile(
         apiSettings,
         currentProfile,
@@ -120,17 +102,16 @@ const Match = ({ setActiveTab }) => {
         analysisResults.missingKeywords
       );
 
-      // Create new profile with enhanced data
-      const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+      // Get stored profiles
+      const storedProfilesStr = await storageHelper.get('userProfiles');
+      const storedProfiles = JSON.parse(storedProfilesStr || '{}');
       if (!storedProfiles[currentUser.id]) {
         storedProfiles[currentUser.id] = {};
       }
 
-      // Find next available ID
       const existingIds = Object.keys(storedProfiles[currentUser.id]).map(Number);
       const nextId = Math.max(0, ...existingIds) + 1;
 
-      // Create new profile
       const newProfile = {
         ...enhancedProfile,
         id: nextId,
@@ -144,29 +125,32 @@ const Match = ({ setActiveTab }) => {
 
       setShowSuccessModal(true);
 
-      // Save to localStorage
+      // Save to storage
       storedProfiles[currentUser.id][nextId] = newProfile;
-      localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+      await storageHelper.set('userProfiles', JSON.stringify(storedProfiles));
+      await storageHelper.set('currentProfile', JSON.stringify(newProfile));
+      await storageHelper.set(`lastLoadedProfile_${currentUser.id}`, nextId.toString());
 
-      // Clear the match data for the new profile
-      localStorage.removeItem(`jobDescription_${currentUser.id}_${nextId}`);
-      localStorage.removeItem(`analysisResults_${currentUser.id}_${nextId}`);
+      // Clear match data
+      if (isExtension) {
+        await chrome.storage.local.remove([
+          `jobDescription_${currentUser.id}_${nextId}`,
+          `analysisResults_${currentUser.id}_${nextId}`
+        ]);
+      } else {
+        localStorage.removeItem(`jobDescription_${currentUser.id}_${nextId}`);
+        localStorage.removeItem(`analysisResults_${currentUser.id}_${nextId}`);
+      }
 
-      // Save as current profile and update last loaded profile
-      localStorage.setItem('currentProfile', JSON.stringify(newProfile));
-      localStorage.setItem(`lastLoadedProfile_${currentUser.id}`, nextId.toString());
-      
-      // Clear current match data
       setJobDescription('');
       setAnalysisResults(null);
-      
-      // Update current profile
       setCurrentProfile(newProfile);
 
-      // Trigger profile update event
-      window.dispatchEvent(new CustomEvent('profileLoaded', {
-        detail: { profile: newProfile }
-      }));
+      if (!isExtension) {
+        window.dispatchEvent(new CustomEvent('profileLoaded', {
+          detail: { profile: newProfile }
+        }));
+      }
 
       setActiveTab('resume');
     } catch (err) {
