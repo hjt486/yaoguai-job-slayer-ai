@@ -140,6 +140,7 @@ li[role="tab"]:not([aria-selected="true"]) {
 }
 
 .tight-layout button,
+.tight-layout select,
 .tight-layout input,
 .tight-layout [role="button"] {
   font-size: 12px;

@@ -6,7 +6,9 @@ import {
   DATE_TIME_FIELDS,
   DATE_FIELDS,
   NOT_EDITABLE_FIELDS,
-  ARRAY_SECTIONS
+  ARRAY_SECTIONS,
+  BOOLEAN_FIELDS,
+  APPLICATION_ONLY_SECTIONS
 } from '../common/Constants';
 import { showFloatingPage } from '../autofill/Autofill';
 import { authService } from '../../services/authService';
@@ -86,6 +88,23 @@ const ResumeSection = ({ title, data, section, profile, onEdit, onSave }) => {
       return <small className={shouldUseTextarea(key, value) ? 'pre-wrap' : 'normal-wrap'}>
         {getFormattedDate(key, value)}
       </small>;
+    }
+
+    if (BOOLEAN_FIELDS.includes(key)) {
+      return (
+        <select
+          value={value || ''}
+          onChange={(e) => onEdit(section, {
+            key,
+            value: e.target.value,
+            index
+          })}
+        >
+          <option value="">Select...</option>
+          <option value="Yes">Yes</option>
+          <option value="No">No</option>
+        </select>
+      );
     }
 
     if (shouldUseTextarea(key, value)) {
@@ -287,65 +306,97 @@ const Resume = () => {
   // Combined useEffect for profile loading and PDF status
   useEffect(() => {
     // In the loadCurrentProfile function within useEffect
-    const loadCurrentProfile = () => {
-      const currentUser = authService.getCurrentUser();
-      const savedProfile = localStorage.getItem('currentProfile');
-
-      if (savedProfile) {
-        const parsedProfile = JSON.parse(savedProfile);
-        const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
-
-        // Check if the currentUser exists and the profile belongs to them
-        if (!currentUser || !storedProfiles[currentUser.id]?.[parsedProfile.id]) {
-          localStorage.removeItem('currentProfile');
+    const ensureProfileCompatibility = (profile) => {
+        const updatedProfile = { ...profile };
+        let needsUpdate = false;
+    
+        // Check all sections from DEFAULT_PROFILE_STRUCTURE
+        Object.entries(DEFAULT_PROFILE_STRUCTURE).forEach(([section, defaultValue]) => {
+          if (!updatedProfile[section]) {
+            updatedProfile[section] = JSON.parse(JSON.stringify(defaultValue));
+            needsUpdate = true;
+          } else if (typeof defaultValue === 'object' && !Array.isArray(defaultValue)) {
+            // Check nested fields in objects
+            Object.keys(defaultValue).forEach(field => {
+              if (!(field in updatedProfile[section])) {
+                updatedProfile[section][field] = defaultValue[field];
+                needsUpdate = true;
+              }
+            });
+          }
+        });
+    
+        return needsUpdate ? updatedProfile : profile;
+      };
+    
+      // Update the loadCurrentProfile function
+      const loadCurrentProfile = () => {
+        const currentUser = authService.getCurrentUser();
+        const savedProfile = localStorage.getItem('currentProfile');
+    
+        if (savedProfile) {
+          const parsedProfile = JSON.parse(savedProfile);
+          const storedProfiles = JSON.parse(localStorage.getItem('userProfiles') || '{}');
+    
+          if (!currentUser || !storedProfiles[currentUser.id]?.[parsedProfile.id]) {
+            localStorage.removeItem('currentProfile');
+            setProfile(null);
+            setPdfGenerated(false);
+            setCoverLetterGenerated(false);
+            return;
+          }
+    
+          // Add compatibility check
+          const compatibleProfile = ensureProfileCompatibility(parsedProfile);
+          if (compatibleProfile !== parsedProfile) {
+            // Update storage if profile was modified
+            storedProfiles[currentUser.id][parsedProfile.id] = compatibleProfile;
+            localStorage.setItem('userProfiles', JSON.stringify(storedProfiles));
+            localStorage.setItem('currentProfile', JSON.stringify(compatibleProfile));
+          }
+    
+          setProfile(compatibleProfile);
+          // Check PDF statuses
+          const pdfData = localStorage.getItem(`generatedPDF_${parsedProfile.id}`);
+          const coverLetterData = localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`);
+          setPdfGenerated(!!pdfData);
+          setCoverLetterGenerated(!!coverLetterData);
+        } else {
           setProfile(null);
           setPdfGenerated(false);
           setCoverLetterGenerated(false);
-          return;
         }
-
-        setProfile(parsedProfile);
-        // Check PDF statuses
-        const pdfData = localStorage.getItem(`generatedPDF_${parsedProfile.id}`);
-        const coverLetterData = localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`);
-        setPdfGenerated(!!pdfData);
-        setCoverLetterGenerated(!!coverLetterData);
-      } else {
-        setProfile(null);
-        setPdfGenerated(false);
-        setCoverLetterGenerated(false);
-      }
-    };
-
-    loadCurrentProfile();
-
-    const handleProfileChange = (e) => {
-      const newProfile = e.detail.profile;
-      setProfile(newProfile);
-
-      if (newProfile) {
-        const pdfData = localStorage.getItem(`generatedPDF_${newProfile.id}`);
-        const coverLetterData = localStorage.getItem(`generatedPDF_${newProfile.id}_coverLetter`);
-        setPdfGenerated(!!pdfData);
-        setCoverLetterGenerated(!!coverLetterData);
-      }
-    };
-
-    // Add event listener for authentication changes
-    const handleAuthChange = () => {
+      };
+    
       loadCurrentProfile();
-    };
-
-    window.addEventListener('profileLoaded', handleProfileChange);
-    window.addEventListener('storage', loadCurrentProfile);
-    authService.subscribe(handleAuthChange); // Assuming authService provides a subscribe method
-
-    return () => {
-      window.removeEventListener('profileLoaded', handleProfileChange);
-      window.removeEventListener('storage', loadCurrentProfile);
-      authService.unsubscribe(handleAuthChange);
-    };
-  }, []);
+    
+      const handleProfileChange = (e) => {
+        const newProfile = e.detail.profile;
+        setProfile(newProfile);
+    
+        if (newProfile) {
+          const pdfData = localStorage.getItem(`generatedPDF_${newProfile.id}`);
+          const coverLetterData = localStorage.getItem(`generatedPDF_${newProfile.id}_coverLetter`);
+          setPdfGenerated(!!pdfData);
+          setCoverLetterGenerated(!!coverLetterData);
+        }
+      };
+    
+      // Add event listener for authentication changes
+      const handleAuthChange = () => {
+        loadCurrentProfile();
+      };
+    
+      window.addEventListener('profileLoaded', handleProfileChange);
+      window.addEventListener('storage', loadCurrentProfile);
+      authService.subscribe(handleAuthChange); // Assuming authService provides a subscribe method
+    
+      return () => {
+        window.removeEventListener('profileLoaded', handleProfileChange);
+        window.removeEventListener('storage', loadCurrentProfile);
+        authService.unsubscribe(handleAuthChange);
+      };
+    }, []);
 
   // Preview effect - keep only this one, remove the duplicate at the bottom
   useEffect(() => {
@@ -601,17 +652,35 @@ const Resume = () => {
           )}
         </div>
       </div>
-      {Object.entries(LABELS.sections).map(([section, label]) => (
-        <ResumeSection
-          key={section}
-          section={section}
-          title={label}
-          data={profile[section]}
-          profile={profile}
-          onEdit={handleSectionEdit}
-          onSave={handleSectionSave}
-        />
-      ))}
+      {Object.entries(LABELS.sections)
+        .filter(([section]) => !APPLICATION_ONLY_SECTIONS.includes(section))
+        .map(([section, label]) => (
+          <ResumeSection
+            key={section}
+            section={section}
+            title={label}
+            data={profile[section]}
+            profile={profile}
+            onEdit={handleSectionEdit}
+            onSave={handleSectionSave}
+          />
+        ))}
+      
+      <h3 className="application-info-header">Application Information</h3>
+      {Object.entries(LABELS.sections)
+        .filter(([section]) => APPLICATION_ONLY_SECTIONS.includes(section))
+        .map(([section, label]) => (
+          <ResumeSection
+            key={section}
+            section={section}
+            title={label}
+            data={profile[section]}
+            profile={profile}
+            onEdit={handleSectionEdit}
+            onSave={handleSectionSave}
+          />
+        ))}
+      
     </article>
   );
 };

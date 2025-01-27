@@ -65,7 +65,37 @@ export const DEFAULT_PROFILE_STRUCTURE = {
     },
   ],
   // Cover Letter Section
-  coverLetter: ""
+  coverLetter: "",
+
+  self_identification: {
+    gender: "",
+    pronouns: "",
+    veteran: "",
+    disability: "",
+    ethnicity: ""
+  },
+
+  legal_authorization: {
+    us_work_authorization: "",
+    legally_allowed_to_work_in_us: "",
+    requires_us_visa: "",
+    requires_us_sponsorship: "",
+
+    eu_work_authorization: "",
+    requires_eu_visa: "",
+    legally_allowed_to_work_in_eu: "",
+    requires_eu_sponsorship: "",
+
+    canada_work_authorization: "",
+    legally_allowed_to_work_in_canada: "",
+    requires_canada_visa: "",
+    requires_canada_sponsorship: "",
+
+    uk_work_authorization: "",
+    legally_allowed_to_work_in_uk: "",
+    requires_uk_visa: "",
+    requires_uk_sponsorship: ""
+  },
 }
 
 export const LABELS = {
@@ -142,7 +172,38 @@ export const LABELS = {
     coverLetter: {
       name: "Cover Letter",
       fields: {}
-    }
+    },
+    self_identification: {
+      name: "Self Identification",
+      fields: {
+        gender: "Gender",
+        pronouns: "Pronouns",
+        veteran: "Veteran Status",
+        disability: "Disability Status",
+        ethnicity: "Ethnicity"
+      }
+    },
+    legal_authorization: {
+      name: "Work Authorization",
+      fields: {
+        eu_work_authorization: "EU Work Authorization",
+        us_work_authorization: "US Work Authorization",
+        requires_us_visa: "Requires US Visa",
+        requires_us_sponsorship: "Requires US Sponsorship",
+        requires_eu_visa: "Requires EU Visa",
+        legally_allowed_to_work_in_eu: "Legally Allowed to Work in EU",
+        legally_allowed_to_work_in_us: "Legally Allowed to Work in US",
+        requires_eu_sponsorship: "Requires EU Sponsorship",
+        canada_work_authorization: "Canada Work Authorization",
+        requires_canada_visa: "Requires Canada Visa",
+        legally_allowed_to_work_in_canada: "Legally Allowed to Work in Canada",
+        requires_canada_sponsorship: "Requires Canada Sponsorship",
+        uk_work_authorization: "UK Work Authorization",
+        requires_uk_visa: "Requires UK Visa",
+        legally_allowed_to_work_in_uk: "Legally Allowed to Work in UK",
+        requires_uk_sponsorship: "Requires UK Sponsorship"
+      }
+    },
   },
   actions: {
     edit: "Edit",
@@ -183,6 +244,32 @@ export const NOT_EDITABLE_FIELDS = [
   'lastModified',
 ]
 
+export const APPLICATION_ONLY_SECTIONS = [
+  'self_identification',
+  'legal_authorization'
+];
+
+export const BOOLEAN_FIELDS = [
+  'requires_us_visa',
+  'requires_us_sponsorship',
+  'requires_eu_visa',
+  'legally_allowed_to_work_in_eu',
+  'legally_allowed_to_work_in_us',
+  'requires_eu_sponsorship',
+  'requires_canada_visa',
+  'legally_allowed_to_work_in_canada',
+  'requires_canada_sponsorship',
+  'requires_uk_visa',
+  'legally_allowed_to_work_in_uk',
+  'requires_uk_sponsorship',
+  'eu_work_authorization',
+  'us_work_authorization',
+  'canada_work_authorization',
+  'uk_work_authorization',
+  'veteran',
+  'disability'
+];
+
 export const AI_CONFIG = {
   SYSTEM_MESSAGE: {
     role: "system",
@@ -193,9 +280,17 @@ export const AI_CONFIG = {
   MAX_TOKENS: 4000
 };
 
+
 export const AI_PROMPTS = {
   RESUME_PARSE: `Please analyze this resume and extract information to fill in below structure,
-  and return the data strictly following this JSON structure: ${JSON.stringify(DEFAULT_PROFILE_STRUCTURE, null, 2)}
+  and return the data strictly following this JSON structure: ${JSON.stringify(
+    Object.fromEntries(
+      Object.entries(DEFAULT_PROFILE_STRUCTURE)
+        .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
+    ),
+    null,
+    2
+  )}
 
   Note: For fields with long paragraph, please detect the point and separate each point with two newlines. 
   
@@ -210,8 +305,16 @@ export const AI_PROMPTS = {
   `,
   JOB_MATCH: `Analyze this job description and compare it with the provided profile.
   Extract key technical skills, requirements, and qualifications from the job description.
-  Compare them with the candidate's profile and identify missing or mismatched skills.
-  
+  Compare them with the candidate's profile (filtered to exclude application-specific fields):
+  ${JSON.stringify(
+    Object.fromEntries(
+      Object.entries(DEFAULT_PROFILE_STRUCTURE)
+        .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
+    ),
+    null,
+    2
+  )}
+
   Return ONLY the following JSON structure without any markdown or code blocks:
   {
     "missingKeywords": [
@@ -227,7 +330,8 @@ export const AI_PROMPTS = {
   - Include both technical skills and soft skills
   - Consider partial matches in the profile
   - Keywords should be strings in an array
-  - Provide specific context for each keyword`,
+  - Provide specific context for each keyword
+  - Do not analyze application-specific fields`,
   PROFILE_ENHANCE: `Given the current profile, job description, and missing keywords, please enhance the profile following these rules:
 
   1. For missing keywords with rating >= 1:
@@ -255,6 +359,13 @@ export const AI_PROMPTS = {
      - Highlight relevant experiences
      - Strengthen alignment with job description
 
-  Return the enhanced profile in this exact JSON structure: ${JSON.stringify(DEFAULT_PROFILE_STRUCTURE, null, 2)}
+  Return the enhanced profile in this exact JSON structure: ${JSON.stringify(
+    Object.fromEntries(
+      Object.entries(DEFAULT_PROFILE_STRUCTURE)
+        .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
+    ),
+    null,
+    2
+  )}
   `,
 };

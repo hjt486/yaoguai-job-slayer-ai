@@ -63,7 +63,7 @@ export const aiService = {
       AI_CONFIG.SYSTEM_MESSAGE,
       {
         role: "user",
-        content: `${AI_PROMPTS.JOB_MATCH}\n\nJob Description:\n${jobDescription}\n\nCandidate Profile:\n${JSON.stringify(profile, null, 2)}`
+        content: `${AI_PROMPTS.JOB_MATCH}\n\nJob Description:\n${jobDescription}`
       }
     ];
 
