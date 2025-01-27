@@ -348,6 +348,7 @@ nav {
     display: inline-block;
     margin: 0;
     flex: 0 1 auto;
+    text-wrap: wrap;
   }
 
   .skill-item span {

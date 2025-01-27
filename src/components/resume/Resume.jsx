@@ -359,8 +359,9 @@ const Resume = () => {
           // Check PDF statuses
           const pdfData = localStorage.getItem(`generatedPDF_${parsedProfile.id}`);
           const coverLetterData = localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`);
+          console.log("localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`)", localStorage.getItem(`generatedPDF_${parsedProfile.id}_coverLetter`))
           setPdfGenerated(!!pdfData);
-          setCoverLetterGenerated(!!coverLetterData);
+          setCoverLetterGenerated(coverLetterData === 'true');
         } else {
           setProfile(null);
           setPdfGenerated(false);
@@ -378,7 +379,7 @@ const Resume = () => {
           const pdfData = localStorage.getItem(`generatedPDF_${newProfile.id}`);
           const coverLetterData = localStorage.getItem(`generatedPDF_${newProfile.id}_coverLetter`);
           setPdfGenerated(!!pdfData);
-          setCoverLetterGenerated(!!coverLetterData);
+          setCoverLetterGenerated(False);
         }
       };
     

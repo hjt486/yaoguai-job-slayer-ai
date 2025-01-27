@@ -201,6 +201,31 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
         });
       }
 
+      // Certifications
+      if (profile.certifications?.length > 0 && profile.certifications.some(cert => cert.name || cert.issuer)) {
+        checkNewPage();
+        addSectionHeader('Certifications');
+        profile.certifications.forEach(cert => {
+          if (!cert.name && !cert.issuer) return; // Skip empty entries
+          checkNewPage();
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(cert.name || '', margin, yPos);
+          
+          if (cert.awardedDate) {
+            const dateText = formatDate(cert.awardedDate);
+            pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
+          }
+
+          if (cert.issuer) {
+            yPos += 15;
+            pdf.setFont('helvetica', 'italic');
+            pdf.text(cert.issuer, margin, yPos);
+          }
+          
+          yPos += 20;
+        });
+      }
+
       // Achievements
       if (profile.achievements?.length > 0 && profile.achievements.some(ach => ach.name || ach.description)) {
         checkNewPage();

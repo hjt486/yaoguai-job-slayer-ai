@@ -64,6 +64,13 @@ export const DEFAULT_PROFILE_STRUCTURE = {
       description: "",
     },
   ],
+  certifications: [
+    {
+      name: "",
+      awardedDate: "",
+      issuer: ""
+    },
+  ],
   // Cover Letter Section
   coverLetter: "",
 
@@ -186,6 +193,14 @@ export const LABELS = {
         description: "Description"
       }
     },
+    certifications: {
+      name: "Certifications",
+      fields: {
+        name: "Certification Name",
+        awardedDate: "Date Awarded",
+        issuer: "Issuing Organization"
+      },
+    },
     coverLetter: {
       name: "Cover Letter",
       fields: {}
@@ -258,6 +273,7 @@ export const ARRAY_SECTIONS = [
   'experience',
   'achievements',
   'projects',
+  'certifications',
   'languages'
 ];
 
@@ -343,7 +359,11 @@ export const AI_PROMPTS = {
     2
   )}
 
-  Note: For fields with long paragraph, please detect the point and separate each point with two newlines. 
+  Note:
+  - For fields with long paragraph, please detect the point and separate each point with two newlines.
+  - For certifications, extract any professional certifications, licenses, or relevant credentials.
+  - Include certification names, issuing organizations, and dates awarded. 
+  - For skills, parse all of them in single small item, don't categorize.
   
   Please also generate and fill cover letter based on the resume, make sure that: 
   Please write a cover letter based on my resume and the job description provided. 
