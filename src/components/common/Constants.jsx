@@ -96,6 +96,23 @@ export const DEFAULT_PROFILE_STRUCTURE = {
     requires_uk_visa: "",
     requires_uk_sponsorship: ""
   },
+  work_preferences: {
+    remote_work: "",
+    on_site_work: "",
+    open_to_relocation: "",
+    willing_to_complete_assessments: "",
+    willing_to_undergo_drug_tests: "",
+    willing_to_undergo_background_checks: ""
+  },
+  salary_expectations: {
+    salary_range: ""
+  },
+  languages: [
+    {
+      language: "",
+      proficiency: ""
+    }
+  ],
 }
 
 export const LABELS = {
@@ -204,6 +221,30 @@ export const LABELS = {
         requires_uk_sponsorship: "Requires UK Sponsorship"
       }
     },
+    work_preferences: {
+      name: "Work Preferences",
+      fields: {
+        remote_work: "Open to Remote Work",
+        on_site_work: "Open to On-Site Work",
+        open_to_relocation: "Open to Relocation",
+        willing_to_complete_assessments: "Willing to Complete Assessments",
+        willing_to_undergo_drug_tests: "Willing to Undergo Drug Tests",
+        willing_to_undergo_background_checks: "Willing to Undergo Background Checks"
+      }
+    },
+    salary_expectations: {
+      name: "Salary Expectations",
+      fields: {
+        salary_range: "Salary Range"
+      }
+    },
+    languages: {
+      name: "Languages",
+      fields: {
+        language: "Language",
+        proficiency: "Proficiency Level"
+      }
+    },
   },
   actions: {
     edit: "Edit",
@@ -216,7 +257,8 @@ export const ARRAY_SECTIONS = [
   'education',
   'experience',
   'achievements',
-  'projects'
+  'projects',
+  'languages'
 ];
 
 export const TEXTAREA_FIELDS = [
@@ -246,7 +288,10 @@ export const NOT_EDITABLE_FIELDS = [
 
 export const APPLICATION_ONLY_SECTIONS = [
   'self_identification',
-  'legal_authorization'
+  'legal_authorization',
+  'work_preferences',
+  'salary_expectations',
+  'languages'
 ];
 
 export const BOOLEAN_FIELDS = [
@@ -267,7 +312,13 @@ export const BOOLEAN_FIELDS = [
   'canada_work_authorization',
   'uk_work_authorization',
   'veteran',
-  'disability'
+  'disability',
+  'remote_work',
+  'on_site_work',
+  'open_to_relocation',
+  'willing_to_complete_assessments',
+  'willing_to_undergo_drug_tests',
+  'willing_to_undergo_background_checks',
 ];
 
 export const AI_CONFIG = {
