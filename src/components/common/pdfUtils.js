@@ -5,7 +5,7 @@ import { storageService } from '../../services/storageService';
 
 const SPACING = {
   base: 10,          // Reduced from 12
-  sectionGap: 5,    // Reduced from 20
+  sectionGap: 5,     // Reduced from 20
   headerGap: 15,     // Reduced from 25
   minScale: 0.15,    // Allows for tighter compression
   maxScale: 1.2      // Keep the same max expansion
@@ -219,7 +219,7 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
           const dateText = `${formatDate(exp.startDate)} - ${exp.endDate ? formatDate(exp.endDate) : 'Present'}`;
           pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
 
-          yPos += 15;
+          yPos += SPACING.base;
           pdf.setFont('helvetica', 'italic');
           const titleLocation = `${exp.jobTitle}${exp.location ? ` - ${exp.location}` : ''}`;
           pdf.text(titleLocation, margin, yPos);
@@ -252,7 +252,7 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
           const dateText = `${formatDate(edu.startDate)} - ${edu.endDate ? formatDate(edu.endDate) : 'Present'}`;
           pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
 
-          yPos += 15;
+          yPos += SPACING.base
           if (edu.degree || edu.field) {
             pdf.setFont('helvetica', 'italic');
             const degreeField = [edu.degree, edu.field].filter(Boolean).join(' - ');
@@ -266,7 +266,7 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
             pdf.text(lines, margin, yPos);
             yPos += (lines.length * SPACING.base);  // Instead of (lines.length * 12)
           }
-          yPos += 15;
+          yPos += SPACING.sectionGap;  // Instead of fixed 15
         });
       }
 
@@ -283,14 +283,15 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
             const dateText = `${formatDate(proj.startDate)} - ${proj.endDate ? formatDate(proj.endDate) : 'Present'}`;
             pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
           }
-          yPos += 15;
+          yPos += SPACING.base
 
           if (proj.description) {
             pdf.setFont('helvetica', 'normal');
             const lines = pdf.splitTextToSize(proj.description, usableWidth);
             pdf.text(lines, margin, yPos);
-            yPos += (lines.length * SPACING.base) + SPACING.sectionGap;
+            yPos += (lines.length * SPACING.base)
           }
+          yPos += SPACING.sectionGap;  // Instead of fixed 15
         });
       }
 
@@ -307,12 +308,13 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
           if (cert.awardedDate) {
             const dateText = formatDate(cert.awardedDate);
             pdf.text(dateText, pageWidth - margin - pdf.getTextWidth(dateText), yPos);
+            yPos += SPACING.base;  // Instead of 15
           }
 
           if (cert.issuer) {
-            yPos += SPACING.base;  // Instead of 15
             pdf.setFont('helvetica', 'italic');
             pdf.text(cert.issuer, margin, yPos);
+            yPos += SPACING.base;  // Instead of 15
           }
 
           yPos += SPACING.sectionGap;  // Instead of 20
