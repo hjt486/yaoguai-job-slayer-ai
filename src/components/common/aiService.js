@@ -76,20 +76,24 @@ export const aiService = {
       }
 
       const content = response.choices[0].message.content;
-      // Extract JSON from markdown code block
-      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/);
-      
-      if (!jsonMatch) {
-        throw new Error('Could not extract JSON from AI response');
-      }
+      let parsedData;
 
-      const parsedData = JSON.parse(jsonMatch[1]);
+      // First try to parse as pure JSON
+      try {
+        parsedData = JSON.parse(content);
+      } catch (e) {
+        // If pure JSON parsing fails, try to extract from markdown
+        const jsonMatch = content.match(/```(?:json)?\n([\s\S]*?)\n```/);
+        if (!jsonMatch) {
+          throw new Error('Could not parse response as JSON');
+        }
+        parsedData = JSON.parse(jsonMatch[1].trim());
+      }
 
       if (!parsedData.missingKeywords || !Array.isArray(parsedData.missingKeywords)) {
-        throw new Error('Invalid response format');
+        throw new Error('Invalid response format: missing keywords array not found');
       }
 
-      // Transform the array of strings into array of objects
       return {
         missingKeywords: parsedData.missingKeywords.map(keyword => ({
           keyword,

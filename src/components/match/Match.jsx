@@ -24,6 +24,7 @@ const Match = ({ setActiveTab }) => {
   });
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
 
   // Update localStorage when job description changes
@@ -69,18 +70,31 @@ const Match = ({ setActiveTab }) => {
         throw new Error('Please select a profile first');
       }
 
-      const currentUser = authService.getCurrentUser();
-      const apiSettings = authService.getUserApiSettings(currentUser.id);
-
-      if (!apiSettings) {
-        throw new Error('Please configure API settings first');
-      }
-
       if (!jobDescription.trim()) {
         throw new Error('Please enter a job description');
       }
 
-      const analysisData = await aiService.analyzeJobMatch(apiSettings, currentProfile, jobDescription);
+      // Wait for current user
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser?.id) {
+        setActiveTab('settings');
+        throw new Error('Please log in to continue');
+      }
+
+      const apiSettings = await authService.getUserApiSettings(currentUser.id);
+      if (!apiSettings?.apiKey) {
+        setActiveTab('settings');
+        throw new Error('Please configure your API key in Settings');
+      }
+
+      // Format API settings with defaults
+      const formattedSettings = {
+        apiKey: apiSettings.apiKey,
+        apiEndpoint: apiSettings.apiEndpoint || 'https://api.openai.com',
+        modelName: apiSettings.modelName || 'gpt-3.5-turbo'
+      };
+
+      const analysisData = await aiService.analyzeJobMatch(formattedSettings, currentProfile, jobDescription);
       setAnalysisResults(analysisData);
     } catch (err) {
       console.error('Analysis error:', err);
@@ -97,18 +111,19 @@ const Match = ({ setActiveTab }) => {
   // Update handleGenerateProfile to use modal
   const handleGenerateProfile = async () => {
     setError('');
+    setIsGenerating(true);
 
     try {
       if (!analysisResults?.missingKeywords || !currentProfile?.id) {
         throw new Error('No analysis results available');
       }
 
-      const currentUser = authService.getCurrentUser();
+      const currentUser = await authService.getCurrentUser();
       if (!currentUser?.id) {
         throw new Error('Please log in first');
       }
 
-      const apiSettings = authService.getUserApiSettings(currentUser.id);
+      const apiSettings = await authService.getUserApiSettings(currentUser.id);
       if (!apiSettings) {
         throw new Error('Please configure API settings first');
       }
@@ -122,7 +137,7 @@ const Match = ({ setActiveTab }) => {
       );
 
       // Create new profile with enhanced data
-      const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
+      const storedProfiles = JSON.parse(await storageService.get('userProfiles') || '{}');
       if (!storedProfiles[currentUser.id]) {
         storedProfiles[currentUser.id] = {};
       }
@@ -156,11 +171,11 @@ const Match = ({ setActiveTab }) => {
       // Save as current profile and update last loaded profile
       storageService.set('currentProfile', JSON.stringify(newProfile));
       storageService.set(`lastLoadedProfile_${currentUser.id}`, nextId.toString());
-      
+
       // Clear current match data
       setJobDescription('');
       setAnalysisResults(null);
-      
+
       // Update current profile
       setCurrentProfile(newProfile);
 
@@ -173,6 +188,8 @@ const Match = ({ setActiveTab }) => {
     } catch (err) {
       console.error('Profile generation error:', err);
       setError(err.message);
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -232,6 +249,18 @@ const Match = ({ setActiveTab }) => {
           Analyze
         </LoadingButton>
       </div>
+
+      <Modal
+        isOpen={isAnalyzing || isGenerating}
+        showOKButton={false}
+      >
+        <div style={{ marginTop: '1rem' }}>
+          <progress></progress>
+          <small> {isAnalyzing ? "Analyzing job description content... " : ""}
+            {isGenerating ? "Generating enhanced profile content... " : ""}
+            don't close the extension window.</small>
+        </div>
+      </Modal>
 
       {analysisResults && (
         <div className="analysis-results">

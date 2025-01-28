@@ -88,20 +88,19 @@ const Settings = () => {
         await storageService.removeAsync(`lastLoadedProfile_${currentUser.id}`);
         await storageService.removeAsync(`userApiSettings_${currentUser.id}`);
         await storageService.removeAsync('userProfiles');
-        
+
         // Finally logout
         await authService.logout();
       }
-      
-      // Redirect to login page
-      window.location.href = '/login';
+
+      window.location.reload();
     } catch (error) {
       console.error('Error during sign out:', error);
-      // Force redirect even if there's an error
-      window.location.href = '/login';
+      // Force reload even if there's an error
+      window.location.reload();
     }
   };
-  
+
   // Update handleApiSubmit function
   const handleApiSubmit = async (e) => {
     e.preventDefault();
@@ -233,22 +232,22 @@ const Settings = () => {
         </div>
       </article>
 
-    <Modal
-      isOpen={showSaveUserSettingsModal}
-      onClose={() => setShowUserSettingsModal(false)}
-    >
-      <h1>User Settings</h1>
-      <p>Updated successfully!</p>
-    </Modal>
-    <Modal
-      isOpen={showSaveApiSettingsModal}
-      onClose={() => setShowApiSettingsModal(false)}
-    >
-      <h1>API Settings</h1>
-      <p>Updated successfully!</p>
-    </Modal>
-  </div>
-);
+      <Modal
+        isOpen={showSaveUserSettingsModal}
+        onClose={() => setShowUserSettingsModal(false)}
+      >
+        <h1>User Settings</h1>
+        <p>Updated successfully!</p>
+      </Modal>
+      <Modal
+        isOpen={showSaveApiSettingsModal}
+        onClose={() => setShowApiSettingsModal(false)}
+      >
+        <h1>API Settings</h1>
+        <p>Updated successfully!</p>
+      </Modal>
+    </div>
+  );
 
 }; // Add closing brace for Settings component
 
