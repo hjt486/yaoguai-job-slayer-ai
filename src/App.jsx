@@ -8,7 +8,7 @@ import Settings from './components/settings/Settings';
 import Match from './components/match/Match';
 import TabLayout from './components/layout/TabLayout';
 
-window.DEBUG = true; // Make DEBUG globally available
+window.DEBUG = false; // Make DEBUG globally available
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
