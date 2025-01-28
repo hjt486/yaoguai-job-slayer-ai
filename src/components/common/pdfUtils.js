@@ -287,9 +287,14 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
 
           if (proj.description) {
             pdf.setFont('helvetica', 'normal');
-            const lines = pdf.splitTextToSize(proj.description, usableWidth);
-            pdf.text(lines, margin, yPos);
-            yPos += (lines.length * SPACING.base)
+            const bullets = proj.description.split('\n').filter(r => r.trim());
+            bullets.forEach(bullet => {
+              checkNewPage();
+              const bulletText = `• ${bullet}`;
+              const lines = pdf.splitTextToSize(bulletText, usableWidth - 10);
+              pdf.text(lines, margin + 10, yPos);
+              yPos += lines.length * SPACING.base;
+            });
           }
           yPos += SPACING.sectionGap;  // Instead of fixed 15
         });
