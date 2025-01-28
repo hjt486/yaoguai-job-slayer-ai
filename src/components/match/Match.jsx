@@ -28,21 +28,21 @@ const Match = ({ setActiveTab }) => {
   const [error, setError] = useState('');
 
   // Update localStorage when job description changes
-  const handleJobDescriptionChange = (e) => {
+  const handleJobDescriptionChange = async (e) => {
     const newValue = e.target.value;
     setJobDescription(newValue);
 
     const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id) {
-      storageService.set(`jobDescription_${currentUser.id}_${currentProfile.id}`, newValue);
+      await storageService.setAsync(`jobDescription_${currentUser.id}_${currentProfile.id}`, newValue);
     }
   };
 
   // Update localStorage when analysis results change
-  useEffect(() => {
+  useEffect( () => {
     const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id && analysisResults) {
-      storageService.set(
+      storageService.setAsync(
         `analysisResults_${currentUser.id}_${currentProfile.id}`,
         JSON.stringify(analysisResults)
       );
@@ -53,8 +53,8 @@ const Match = ({ setActiveTab }) => {
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id) {
-      const savedJob = storageService.get(`jobDescription_${currentUser.id}_${currentProfile.id}`);
-      const savedResults = storageService.get(`analysisResults_${currentUser.id}_${currentProfile.id}`);
+      const savedJob = storageService.getAsync(`jobDescription_${currentUser.id}_${currentProfile.id}`);
+      const savedResults = storageService.getAsync(`analysisResults_${currentUser.id}_${currentProfile.id}`);
 
       setJobDescription(savedJob || '');
       setAnalysisResults(savedResults ? JSON.parse(savedResults) : null);
@@ -137,7 +137,7 @@ const Match = ({ setActiveTab }) => {
       );
 
       // Create new profile with enhanced data
-      const storedProfiles = JSON.parse(await storageService.get('userProfiles') || '{}');
+      const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
       if (!storedProfiles[currentUser.id]) {
         storedProfiles[currentUser.id] = {};
       }
@@ -162,15 +162,15 @@ const Match = ({ setActiveTab }) => {
 
       // Save to localStorage
       storedProfiles[currentUser.id][nextId] = newProfile;
-      storageService.set('userProfiles', JSON.stringify(storedProfiles));
+      await storageService.setAsync('userProfiles', JSON.stringify(storedProfiles));
 
       // Clear the match data for the new profile
-      storageService.remove(`jobDescription_${currentUser.id}_${nextId}`);
-      storageService.remove(`analysisResults_${currentUser.id}_${nextId}`);
+      await storageService.setAsync(`jobDescription_${currentUser.id}_${nextId}`);
+      await storageService.setAsync(`analysisResults_${currentUser.id}_${nextId}`);
 
       // Save as current profile and update last loaded profile
-      storageService.set('currentProfile', JSON.stringify(newProfile));
-      storageService.set(`lastLoadedProfile_${currentUser.id}`, nextId.toString());
+      await storageService.setAsync('currentProfile', JSON.stringify(newProfile));
+      await storageService.setAsync(`lastLoadedProfile_${currentUser.id}`, nextId.toString());
 
       // Clear current match data
       setJobDescription('');
