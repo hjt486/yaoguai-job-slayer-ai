@@ -91,10 +91,10 @@ const Profiles = () => {
       try {
         storedProfiles[currentUser.id][nextId] = newProfile;
         await storageService.setAsync('userProfiles', JSON.stringify(storedProfiles));
-        
+
         // Update local state first
         setProfiles(prev => [...prev, newProfile]);
-        
+
         // Then load the new profile
         await handleLoadProfile(newProfile);
       } catch (e) {
@@ -124,9 +124,23 @@ const Profiles = () => {
   useEffect(() => {
     const initializeProfiles = async () => {
       try {
-        const currentUser = authService.getCurrentUser();
+        // Properly wait for user authentication status
+        const currentUser = await authService.getCurrentUser();
+        if (!currentUser) return;
         const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
-        const lastLoadedProfileId = await storageService.getAsync(`lastLoadedProfile_${currentUser.id}`);
+        const [lastLoadedProfileId, currentProfile] = await Promise.all([
+          storageService.getAsync(`lastLoadedProfile_${currentUser.id}`),
+          storageService.getAsync('currentProfile')
+        ]);
+
+        // Prioritize currentProfile from storage if exists
+        if (currentProfile) {
+          const parsedProfile = JSON.parse(currentProfile);
+          if (parsedProfile?.id) {
+            await handleLoadProfile(parsedProfile);
+            return;
+          }
+        }
 
         // Clear all user-specific data if no profiles exist for this user
         if (!storedProfiles[currentUser.id]) {
@@ -199,51 +213,51 @@ const Profiles = () => {
 
 
   const handleDeleteProfile = async (id) => {
-      try {
-        const currentUser = await authService.getCurrentUser();
-        if (!currentUser?.id) {
-          throw new Error('No user logged in');
-        }
-  
-        const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
-        if (!storedProfiles[currentUser.id]?.[id]) {
-          throw new Error('Profile not found');
-        }
-  
-        // Remove profile from userProfiles
-        delete storedProfiles[currentUser.id][id];
-        await storageService.setAsync('userProfiles', JSON.stringify(storedProfiles));
-  
-        // Remove associated data in parallel
-        await Promise.all([
-          storageService.removeAsync(`resume_${id}`),
-          storageService.removeAsync(`generatedPDF_${id}`),
-          storageService.removeAsync(`pdfFileName_${id}`),
-          storageService.removeAsync(`coverLetter_${id}`),
-          storageService.removeAsync(`coverLetterFileName_${id}`)
-        ]);
-  
-        // Handle current profile updates
-        const currentProfile = JSON.parse(await storageService.getAsync('currentProfile'));
-        if (currentProfile?.id === id) {
-          const remainingProfiles = Object.values(storedProfiles[currentUser.id]);
-          if (remainingProfiles.length > 0) {
-            const nextProfile = remainingProfiles[0];
-            await handleLoadProfile(nextProfile);
-          } else {
-            await storageService.removeAsync('currentProfile');
-            setCurrentProfileId(null);
-            setSelectedFile(null);
-            setResumeName('');
-          }
-        }
-  
-        await loadProfiles();
-      } catch (error) {
-        console.error('Error deleting profile:', error);
-        setError(error.message || 'Failed to delete profile');
+    try {
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser?.id) {
+        throw new Error('No user logged in');
       }
-    };
+
+      const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
+      if (!storedProfiles[currentUser.id]?.[id]) {
+        throw new Error('Profile not found');
+      }
+
+      // Remove profile from userProfiles
+      delete storedProfiles[currentUser.id][id];
+      await storageService.setAsync('userProfiles', JSON.stringify(storedProfiles));
+
+      // Remove associated data in parallel
+      await Promise.all([
+        storageService.removeAsync(`resume_${id}`),
+        storageService.removeAsync(`generatedPDF_${id}`),
+        storageService.removeAsync(`pdfFileName_${id}`),
+        storageService.removeAsync(`coverLetter_${id}`),
+        storageService.removeAsync(`coverLetterFileName_${id}`)
+      ]);
+
+      // Handle current profile updates
+      const currentProfile = JSON.parse(await storageService.getAsync('currentProfile'));
+      if (currentProfile?.id === id) {
+        const remainingProfiles = Object.values(storedProfiles[currentUser.id]);
+        if (remainingProfiles.length > 0) {
+          const nextProfile = remainingProfiles[0];
+          await handleLoadProfile(nextProfile);
+        } else {
+          await storageService.removeAsync('currentProfile');
+          setCurrentProfileId(null);
+          setSelectedFile(null);
+          setResumeName('');
+        }
+      }
+
+      await loadProfiles();
+    } catch (error) {
+      console.error('Error deleting profile:', error);
+      setError(error.message || 'Failed to delete profile');
+    }
+  };
 
   // Update handleParse to handle profile updates
   const handleParse = async () => {
@@ -346,7 +360,7 @@ const Profiles = () => {
 
       // Update local state and load profile
       setProfiles(prev => [...prev, newProfile]);
-      
+
       // Ensure the profile is saved before loading it
       await new Promise(resolve => setTimeout(resolve, 100));
       await handleLoadProfile(newProfile);
@@ -367,16 +381,18 @@ const Profiles = () => {
     try {
       const currentUser = await authService.getCurrentUser();
       const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
-      
+
       if (!storedProfiles[currentUser?.id]?.[profile.id]) {
         setError('Profile not found');
         return;
       }
 
       // Save current profile
-      await storageService.setAsync('currentProfile', JSON.stringify(profile));
-      await storageService.setAsync(`lastLoadedProfile_${currentUser.id}`, profile.id);
-      
+      await Promise.all([
+        storageService.setAsync('currentProfile', JSON.stringify(profile)),
+        storageService.setAsync(`lastLoadedProfile_${currentUser.id}`, profile.id)
+      ]);
+
       setCurrentProfileId(profile.id);
       window.dispatchEvent(new CustomEvent('profileLoaded', {
         detail: { profile }
