@@ -11,73 +11,69 @@ const Match = ({ setActiveTab }) => {
     return savedProfile ? JSON.parse(savedProfile) : null;
   });
 
-  const [jobDescription, setJobDescription] = useState(() => {
-    const currentUser = authService.getCurrentUser();
-    const savedJob = storageService.get(`jobDescription_${currentUser?.id}_${currentProfile?.id}`);
-    return savedJob || '';
-  });
-
-  const [analysisResults, setAnalysisResults] = useState(() => {
-    const currentUser = authService.getCurrentUser();
-    const savedResults = storageService.get(`analysisResults_${currentUser?.id}_${currentProfile?.id}`);
-    return savedResults ? JSON.parse(savedResults) : null;
-  });
+  const [jobDescription, setJobDescription] = useState('');
+  const [analysisResults, setAnalysisResults] = useState(null);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Update localStorage when job description changes
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Add useEffect to load user data
+  useEffect(() => {
+    const loadUser = async () => {
+      const user = await authService.getCurrentUser();
+      console.log('User loaded:', user);
+      setCurrentUser(user);
+
+      // Reload data after user is loaded
+      if (user?.id && currentProfile?.id) {
+        const jobKey = `jobDescription_${user.id}_${currentProfile.id}`;
+        const resultsKey = `analysisResults_${user.id}_${currentProfile.id}`;
+
+        const [savedJob, savedResults] = await Promise.all([
+          storageService.getAsync(jobKey),
+          storageService.getAsync(resultsKey)
+        ]);
+
+        // Only set job description if it exists
+        if (savedJob) {
+          setJobDescription(savedJob);
+        }
+
+        // Only parse and set analysis results if they exist and are valid
+        if (savedResults && savedResults !== 'undefined') {
+          try {
+            const parsedResults = JSON.parse(savedResults);
+            if (parsedResults) {
+              setAnalysisResults(parsedResults);
+            }
+          } catch (err) {
+            console.error('Failed to parse saved analysis results:', err);
+          }
+        }
+      }
+    };
+
+    loadUser();
+  }, []);
+
+  // Update job description handler to use currentUser state
   const handleJobDescriptionChange = async (e) => {
     const newValue = e.target.value;
     setJobDescription(newValue);
 
-    const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id) {
       const key = `jobDescription_${currentUser.id}_${currentProfile.id}`;
       await storageService.setAsync(key, newValue);
-      console.log('Saved job description:', { key, value: newValue });
+      const savedValue = await storageService.getAsync(key);
     }
   };
 
-  // Update localStorage when analysis results change
-  useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser?.id && currentProfile?.id && analysisResults) {
-      const key = `analysisResults_${currentUser.id}_${currentProfile.id}`;
-      const value = JSON.stringify(analysisResults);
-      storageService.setAsync(key, value);
-      console.log('Saved analysis results:', { key, value });
-    }
-  }, [analysisResults, currentProfile]);
-
-  // Clear stored data when profile changes
-  useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    if (currentUser?.id && currentProfile?.id) {
-      const jobKey = `jobDescription_${currentUser.id}_${currentProfile.id}`;
-      const resultsKey = `analysisResults_${currentUser.id}_${currentProfile.id}`;
-
-      console.log('Loading saved data for profile:', { 
-        userId: currentUser.id, 
-        profileId: currentProfile.id 
-      });
-
-      Promise.all([
-        storageService.getAsync(jobKey),
-        storageService.getAsync(resultsKey)
-      ]).then(([savedJob, savedResults]) => {
-        console.log('Loaded data:', { 
-          jobDescription: savedJob, 
-          analysisResults: savedResults 
-        });
-
-        setJobDescription(savedJob || '');
-        setAnalysisResults(savedResults ? JSON.parse(savedResults) : null);
-      });
-    }
-  }, [currentProfile]);
-
+  // In handleAnalyze function, add debug for analysis results
   const handleAnalyze = async () => {
     setIsAnalyzing(true);
     setError('');
@@ -91,7 +87,6 @@ const Match = ({ setActiveTab }) => {
         throw new Error('Please enter a job description');
       }
 
-      const currentUser = await authService.getCurrentUser();
       if (!currentUser?.id) {
         setActiveTab('settings');
         throw new Error('Please log in to continue');
@@ -110,20 +105,13 @@ const Match = ({ setActiveTab }) => {
       };
 
       // Only analyze for missing keywords, don't update profile
-      const analysisData = await aiService.analyzeJobMatch(formattedSettings, {...currentProfile}, jobDescription);
-      
+      const analysisData = await aiService.analyzeJobMatch(formattedSettings, { ...currentProfile }, jobDescription);
+      console.log('Analysis results received:', analysisData);
+
       // Store only missing keywords in analysis results
       setAnalysisResults({
         missingKeywords: analysisData.missingKeywords
       });
-
-      // Save analysis results without updating profile
-      if (currentUser?.id && currentProfile?.id) {
-        await storageService.setAsync(
-          `analysisResults_${currentUser.id}_${currentProfile.id}`,
-          JSON.stringify({ missingKeywords: analysisData.missingKeywords })
-        );
-      }
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err.message);
@@ -132,11 +120,6 @@ const Match = ({ setActiveTab }) => {
     }
   };
 
-  // In handleGenerateProfile, update the success state
-  // Replace showSuccess state with showSuccessModal
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-
-  // Update handleGenerateProfile to use modal
   const handleGenerateProfile = async () => {
     setError('');
     setIsGenerating(true);
@@ -146,7 +129,6 @@ const Match = ({ setActiveTab }) => {
         throw new Error('No analysis results available');
       }
 
-      const currentUser = await authService.getCurrentUser();
       if (!currentUser?.id) {
         throw new Error('Please log in first');
       }

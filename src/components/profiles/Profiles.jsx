@@ -169,7 +169,7 @@ const Profiles = () => {
     initializeProfiles();
 
     const handleProfileUpdate = async (e) => {
-      console.log('Profile update received:', e.detail.profile);
+      // console.log('Profile update received:', e.detail.profile);
       await loadProfiles();
       setCurrentProfileId(e.detail.profile.id);
     };

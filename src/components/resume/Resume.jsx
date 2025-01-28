@@ -408,13 +408,6 @@ const Resume = () => {
     };
   }, []);
 
-  // Preview effect - keep only this one, remove the duplicate at the bottom
-  useEffect(() => {
-    if (previewRef.current && profile) {
-      previewRef.current.innerHTML = showResumePreview();
-    }
-  }, [profile]);
-
   if (!profile) {
     return (
       <article style={{ textAlign: 'center', padding: '2rem' }}>
