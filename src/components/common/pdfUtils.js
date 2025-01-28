@@ -67,6 +67,13 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
         };
     
         const addSectionHeader = (title) => {
+          // Check if there's enough space for the header plus some content
+          const minimumSpaceNeeded = 50; // Space for header + some content
+          if (yPos > pageHeight - (margin + minimumSpaceNeeded)) {
+            pdf.addPage();
+            yPos = margin;
+          }
+    
           pdf.setFontSize(14);
           pdf.setFont('helvetica', 'bold');
           const cleanTitle = cleanText(title);
