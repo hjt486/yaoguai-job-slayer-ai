@@ -1,10 +1,25 @@
 import { AI_CONFIG, AI_PROMPTS } from './Constants';
 import { storageService } from '../../services/storageService';
+import { MOCK_API_RESPONSES } from '../../services/mockData';
 
 export const aiService = {
   async sendChatRequest(apiSettings, messages) {
+    if (window.DEBUG) { // DEBUG mode, return mock API data
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API delay
+
+      // Determine which mock response to return based on the message content
+      if (messages[1].content.includes(AI_PROMPTS.RESUME_PARSE)) {
+        return MOCK_API_RESPONSES.parseResume;
+      } else if (messages[1].content.includes(AI_PROMPTS.JOB_MATCH)) {
+        return MOCK_API_RESPONSES.analyzeJobMatch
+      } else if (messages[1].content.includes(AI_PROMPTS.PROFILE_ENHANCE)) {
+        return MOCK_API_RESPONSES.generateEnhancedProfile;
+      }
+    }
+
+    // Original API call code remains unchanged
     const apiEndpoint = apiSettings.apiEndpoint.replace(/\/$/, '');
-    
+
     const requestBody = {
       model: apiSettings.modelName,
       messages,
@@ -40,6 +55,7 @@ export const aiService = {
 
     const data = await response.json();
     console.log('AI Response:', data);
+
     return data;
   },
 
@@ -69,7 +85,7 @@ export const aiService = {
     ];
 
     const response = await this.sendChatRequest(apiSettings, messages);
-    
+
     try {
       if (!response?.choices?.[0]?.message?.content) {
         throw new Error('Invalid API response structure');
@@ -139,7 +155,7 @@ ${JSON.stringify(missingKeywords, null, 2)}`
 
     try {
       const response = await this.sendChatRequest(apiSettings, messages);
-      
+
       if (!response?.choices?.[0]?.message?.content) {
         throw new Error('Invalid API response structure');
       }
@@ -147,13 +163,13 @@ ${JSON.stringify(missingKeywords, null, 2)}`
       const content = response.choices[0].message.content;
       // Extract JSON from markdown code block
       const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/);
-      
+
       if (!jsonMatch) {
         throw new Error('Could not extract JSON from AI response');
       }
 
       const enhancedProfile = JSON.parse(jsonMatch[1]);
-      
+
       console.log('Profile Enhancement Result:', {
         originalName: currentProfile.metadata?.profileName,
         enhancedName: enhancedProfile.metadata?.profileName,

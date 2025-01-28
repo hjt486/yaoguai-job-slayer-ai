@@ -34,18 +34,20 @@ const Match = ({ setActiveTab }) => {
 
     const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id) {
-      await storageService.setAsync(`jobDescription_${currentUser.id}_${currentProfile.id}`, newValue);
+      const key = `jobDescription_${currentUser.id}_${currentProfile.id}`;
+      await storageService.setAsync(key, newValue);
+      console.log('Saved job description:', { key, value: newValue });
     }
   };
 
   // Update localStorage when analysis results change
-  useEffect( () => {
+  useEffect(() => {
     const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id && analysisResults) {
-      storageService.setAsync(
-        `analysisResults_${currentUser.id}_${currentProfile.id}`,
-        JSON.stringify(analysisResults)
-      );
+      const key = `analysisResults_${currentUser.id}_${currentProfile.id}`;
+      const value = JSON.stringify(analysisResults);
+      storageService.setAsync(key, value);
+      console.log('Saved analysis results:', { key, value });
     }
   }, [analysisResults, currentProfile]);
 
@@ -53,11 +55,26 @@ const Match = ({ setActiveTab }) => {
   useEffect(() => {
     const currentUser = authService.getCurrentUser();
     if (currentUser?.id && currentProfile?.id) {
-      const savedJob = storageService.getAsync(`jobDescription_${currentUser.id}_${currentProfile.id}`);
-      const savedResults = storageService.getAsync(`analysisResults_${currentUser.id}_${currentProfile.id}`);
+      const jobKey = `jobDescription_${currentUser.id}_${currentProfile.id}`;
+      const resultsKey = `analysisResults_${currentUser.id}_${currentProfile.id}`;
 
-      setJobDescription(savedJob || '');
-      setAnalysisResults(savedResults ? JSON.parse(savedResults) : null);
+      console.log('Loading saved data for profile:', { 
+        userId: currentUser.id, 
+        profileId: currentProfile.id 
+      });
+
+      Promise.all([
+        storageService.getAsync(jobKey),
+        storageService.getAsync(resultsKey)
+      ]).then(([savedJob, savedResults]) => {
+        console.log('Loaded data:', { 
+          jobDescription: savedJob, 
+          analysisResults: savedResults 
+        });
+
+        setJobDescription(savedJob || '');
+        setAnalysisResults(savedResults ? JSON.parse(savedResults) : null);
+      });
     }
   }, [currentProfile]);
 
