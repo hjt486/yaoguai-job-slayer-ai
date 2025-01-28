@@ -116,7 +116,6 @@ const Settings = () => {
         apiKey,
         apiEndpoint,
         modelName,
-        userId: currentUser.id
       };
 
       await authService.updateUserApiSettings(currentUser.id, apiSettings);

@@ -255,6 +255,7 @@ const Profiles = () => {
       const currentUser = await authService.getCurrentUser();
       const apiSettings = await authService.getUserApiSettings(currentUser.id);
 
+      console.log("apiSettings", apiSettings)
       if (!apiSettings) {
         throw new Error('Please configure API settings first');
       }
@@ -354,6 +355,10 @@ const Profiles = () => {
       setError(err.message);
     } finally {
       setIsParsing(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 

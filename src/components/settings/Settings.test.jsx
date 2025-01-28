@@ -78,7 +78,6 @@ describe('Settings Component', () => {
       apiKey: 'new-api-key',
       apiEndpoint: '',
       modelName: '',
-      userId: 'test-user-id'
     });
   });
 
