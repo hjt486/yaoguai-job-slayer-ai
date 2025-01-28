@@ -6,6 +6,7 @@ import { parseDocument } from '../common/DocumentParser';
 import { aiService } from '../common/aiService';
 import { formatDateTime, getCurrentISOString } from '../common/dateUtils';
 import { storageService } from '../../services/storageService';
+import Modal from '../common/Modal';
 import React from 'react';
 
 const Profiles = () => {
@@ -482,15 +483,8 @@ const Profiles = () => {
         >
           Parse
         </LoadingButton>
+        {error && <small style={{ color: 'red' }}>{error}</small>}
       </fieldset>
-
-      {error && <small style={{ color: 'red' }}>{error}</small>}
-      {isParsing && (
-        <div style={{ marginTop: '1rem' }}>
-          <progress></progress>
-          <small>Analyzing resume content...</small>
-        </div>
-      )}
 
       {showPasteDialog && (
         <dialog open>
@@ -570,6 +564,19 @@ const Profiles = () => {
       <div className='grid'>
         <button onClick={handleCreateProfile} >Add New Profile</button>
       </div>
+
+      <Modal
+        isOpen={isParsing}
+        onClose={() => setShowSuccessModal(false)}
+        showOKButton={false}
+      >
+        {isParsing && (
+          <div style={{ marginTop: '1rem' }}>
+            <progress></progress>
+            <small>Analyzing resume content...</small>
+          </div>
+        )}
+      </Modal>
     </article>
   );
 };
