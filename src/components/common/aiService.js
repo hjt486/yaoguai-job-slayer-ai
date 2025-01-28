@@ -71,19 +71,13 @@ export const aiService = {
     const response = await this.sendChatRequest(apiSettings, messages);
     
     try {
+      // Check if response has the expected structure
       if (!response?.choices?.[0]?.message?.content) {
         throw new Error('Invalid API response structure');
       }
 
       const content = response.choices[0].message.content;
-      // Extract JSON from markdown code block
-      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/);
-      
-      if (!jsonMatch) {
-        throw new Error('Could not extract JSON from AI response');
-      }
-
-      const parsedData = JSON.parse(jsonMatch[1]);
+      const parsedData = JSON.parse(content);
 
       if (!parsedData.missingKeywords || !Array.isArray(parsedData.missingKeywords)) {
         throw new Error('Invalid response format');
@@ -132,17 +126,16 @@ ${JSON.stringify(missingKeywords, null, 2)}`
       }
     ];
 
+    const response = await this.sendChatRequest(apiSettings, messages);
+    
     try {
-      const response = await this.sendChatRequest(apiSettings, messages);
-      
       if (!response?.choices?.[0]?.message?.content) {
         throw new Error('Invalid API response structure');
       }
 
       const content = response.choices[0].message.content;
-      // Extract JSON from markdown code block
       const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/);
-      
+
       if (!jsonMatch) {
         throw new Error('Could not extract JSON from AI response');
       }
@@ -167,7 +160,7 @@ ${JSON.stringify(missingKeywords, null, 2)}`
       return enhancedProfile;
 
     } catch (error) {
-      console.error('Failed to parse enhanced profile response:', error);
+      console.error('Failed to parse enhanced profile response:', error, response);
       throw new Error('Failed to generate enhanced profile');
     }
   }

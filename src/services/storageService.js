@@ -163,12 +163,7 @@ class StorageService {
   async getAsync(key) {
     if (!isExtension) return this.get(key);
     await this.initSyncCache();
-    const value = this.cache.get(key);
-    try {
-      return value ? JSON.parse(value) : null;
-    } catch {
-      return value;
-    }
+    return this.cache.get(key) || null;
   }
 
   async setAsync(key, value) {
