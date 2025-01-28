@@ -360,7 +360,7 @@ export const AI_PROMPTS = {
   )}
 
   Note:
-  - For fields with long paragraph, please detect the point and separate each point with two newlines (IMPORTANT).
+  - For fields with long paragraph except summary, please detect the point and separate each point with two newlines (IMPORTANT).
   - For certifications, extract any professional certifications, licenses, or relevant credentials.
   - Include certification names, issuing organizations, and dates awarded. 
   - For skills, parse all of them in single small item, don't categorize.
@@ -373,24 +373,35 @@ export const AI_PROMPTS = {
 
   Lastly, Ensure all dates are in ISO format and all fields match exactly as specified.
   `,
-  JOB_MATCH: `Analyze the job description and compare it with the provided candidate profile.
+  JOB_MATCH: `Compare job description with candidate profile:
+    1. Extract from job:
+       - Company name -> targetCompany
+       - Position -> targetRole
+       - Job ID -> jobId
+       - Description -> jobDescription
+       - Required skills & qualifications
+  
+    2. Compare with profile:
+       - Match similar terms (e.g., HTML5=HTML)
+       - Include soft skills
+       - Find missing requirements
 
-  Parse the candidate's profile (provided as a JSON object) to remove unnecessary escape characters.
-  Extract key technical skills, requirements, and qualifications from the job description.
-  Compare these extracted keywords with the candidate's profile, focusing on both technical and soft skills.
-  Identify missing keywords or skills by consolidating similar terms (e.g., HTML5 and HTML as "HTML," AWS as "Amazon Web Services (AWS)").
-  Currently find and fill the job role, job description, Job ID (if any) into the return profile.
-
-  Return only a valid JSON object in this structure:
-  { "missingKeywords": [ "keyword1", "keyword2" ] }
-
-  Important Notes:
-
-  Do not include markdown code blocks or explanations.
-  Consolidate redundant skills into a single keyword.
-  Provide accurate, specific keywords for missing skills, avoiding duplicates.
-  The response must strictly adhere to the required JSON format.
-  `,
+    3. Make the change to"targetRole, "targetCompany", "jobDescription" "jobId" (if any):
+       - Discard these fields from current profile
+       - Fill it from the content in given job description
+  
+    Return strict JSON only format:
+    {
+      "missingKeywords": ["skill1", "skill2"],
+      "metadata": {
+        "targetRole": "",
+        "targetCompany": "",
+        "jobId": "",
+        "jobDescription": ""
+      }
+    }
+  
+    Note: Consolidate similar terms, no duplicates.`,
   PROFILE_ENHANCE: `Given the current profile, job description, and missing keywords, please enhance the profile following these rules:
 
   1. For missing keywords with rating >= 1:
@@ -420,6 +431,9 @@ export const AI_PROMPTS = {
 
   4. For skills that is generallized such as Debugging, Diagnostic Skills, Give and Receive Feedback etc.
      Just generate a short sentence in the summmary, and mentioned them in the cover letter..
+
+  5. Correctly find and fill/change "targetRole, "targetCompany", "jobDescription" "jobId" (if any) from the given job description into the return profile.
+
 
   Return the enhanced profile in this exact JSON structure: ${JSON.stringify(
     Object.fromEntries(

@@ -94,12 +94,14 @@ export const aiService = {
         throw new Error('Invalid response format: missing keywords array not found');
       }
 
+      // Return both missingKeywords and metadata
       return {
         missingKeywords: parsedData.missingKeywords.map(keyword => ({
           keyword,
           rating: 0,
           description: ''
-        }))
+        })),
+        metadata: parsedData.metadata || {}
       };
     } catch (error) {
       console.error('Failed to parse analysis response:', error, response);
