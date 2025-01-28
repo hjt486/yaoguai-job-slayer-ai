@@ -40,6 +40,12 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
 
   const getFormattedDate = (key, value) => {
     if (!value) return '';
+    if (key === 'jobDescription') {
+      const words = value?.split(' ') || [];
+      const truncatedText = words.slice(0, 50).join(' ') + (words.length > 100 ? ' ...' : '');
+      return <small className="pre-wrap">{truncatedText}</small>;
+
+    }
     if (key === 'resumeName') {
       const resumeKey = `resume_${profile.id}`;
       const storedResume = JSON.parse(storageService.get(resumeKey));
@@ -90,6 +96,7 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
         {getFormattedDate(key, value)}
       </small>;
     }
+
 
     if (BOOLEAN_FIELDS.includes(key)) {
       return (
@@ -361,7 +368,7 @@ const Resume = () => {
         // Check PDF statuses
         const resumePDF = storageService.get(`resumePDF_${parsedProfile.id}`);
         const coverLetterPDF = storageService.get(`coverLetter_${parsedProfile.id}`);
-        
+
         setPdfGenerated(!!resumePDF);
         setCoverLetterGenerated(!!coverLetterPDF);
       } else {
@@ -378,7 +385,7 @@ const Resume = () => {
       if (newProfile) {
         const resumePDF = storageService.get(`resumePDF_${newProfile.id}`);
         const coverLetterPDF = storageService.get(`coverLetter_${newProfile.id}`);
-        
+
         setPdfGenerated(!!resumePDF);
         setCoverLetterGenerated(!!coverLetterPDF);
       } else {
@@ -542,50 +549,50 @@ const Resume = () => {
   };
 
   const handleSectionSave = async () => {
-      try {
-        // Save to localStorage
-        const updatedProfile = {
-          ...profile,
-          metadata: {
-            ...profile.metadata,
-            lastModified: getCurrentISOString()
-          }
-        };
-  
-        const currentUser = await authService.getCurrentUser();
-        if (!currentUser?.id) {
-          throw new Error('User not logged in');
+    try {
+      // Save to localStorage
+      const updatedProfile = {
+        ...profile,
+        metadata: {
+          ...profile.metadata,
+          lastModified: getCurrentISOString()
         }
-  
-        // Update in userProfiles
-        const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
-        if (!storedProfiles[currentUser.id]) {
-          storedProfiles[currentUser.id] = {};
-        }
-        storedProfiles[currentUser.id][profile.id] = updatedProfile;
-  
-        // Save all updates
-        await Promise.all([
-          storageService.setAsync('userProfiles', JSON.stringify(storedProfiles)),
-          storageService.setAsync('currentProfile', JSON.stringify(updatedProfile)),
-          storageService.setAsync(`lastLoadedProfile_${currentUser.id}`, profile.id.toString())
-        ]);
-  
-        // Update local state
-        setProfile(updatedProfile);
-  
-        // Dispatch events for other components
-        window.dispatchEvent(new CustomEvent('profileUpdated', {
-          detail: { profile: updatedProfile }
-        }));
-        window.dispatchEvent(new CustomEvent('profileLoaded', {
-          detail: { profile: updatedProfile }
-        }));
-      } catch (error) {
-        console.error('Error saving profile:', error);
-        // Optionally handle error state
+      };
+
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser?.id) {
+        throw new Error('User not logged in');
       }
-    };
+
+      // Update in userProfiles
+      const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
+      if (!storedProfiles[currentUser.id]) {
+        storedProfiles[currentUser.id] = {};
+      }
+      storedProfiles[currentUser.id][profile.id] = updatedProfile;
+
+      // Save all updates
+      await Promise.all([
+        storageService.setAsync('userProfiles', JSON.stringify(storedProfiles)),
+        storageService.setAsync('currentProfile', JSON.stringify(updatedProfile)),
+        storageService.setAsync(`lastLoadedProfile_${currentUser.id}`, profile.id.toString())
+      ]);
+
+      // Update local state
+      setProfile(updatedProfile);
+
+      // Dispatch events for other components
+      window.dispatchEvent(new CustomEvent('profileUpdated', {
+        detail: { profile: updatedProfile }
+      }));
+      window.dispatchEvent(new CustomEvent('profileLoaded', {
+        detail: { profile: updatedProfile }
+      }));
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      // Optionally handle error state
+    }
+  };
 
   const handleGeneratePDF = async () => {
     setPdfGenerated(false);
