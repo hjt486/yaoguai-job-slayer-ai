@@ -347,101 +347,89 @@ export const AI_CONFIG = {
   MAX_TOKENS: 4000
 };
 
+const PROFILE_RULES = ` Profile Rules:
+ 1. Text Formatting:
+    - Long fields (responsibilities, achievements, description):
+      * Split each point with double newlines (\\n\\n)
+      * One point per line
+    - Summary: single paragraph
+    - Cover letter: generate from resume content
+      * Professional yet conversational tone
+      * Clear subjects, short sentences
+      * Double newline between paragraphs
+  
+ 2. Other Fields:
+    - Skills: single items, no categories
+    - Dates: ISO format
+    - Certifications: name, issuer, date`
 
 export const AI_PROMPTS = {
-  RESUME_PARSE: `Please analyze this resume and extract information to fill in below structure,
-  and return the data strictly following this JSON structure: ${JSON.stringify(
-    Object.fromEntries(
-      Object.entries(DEFAULT_PROFILE_STRUCTURE)
-        .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
-    ),
-    null,
-    2
-  )}
-
-  Note:
-  - For fields with long paragraph except summary, please detect the point and separate each point with two newlines (IMPORTANT).
-  - For certifications, extract any professional certifications, licenses, or relevant credentials.
-  - Include certification names, issuing organizations, and dates awarded. 
-  - For skills, parse all of them in single small item, don't categorize.
+  RESUME_PARSE: `Parse resume into JSON structure:
+  ${JSON.stringify(
+      Object.fromEntries(
+        Object.entries(DEFAULT_PROFILE_STRUCTURE)
+          .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
+      ),
+      null,
+      2
+    )}
   
-  Please also generate and fill cover letter based on the resume, make sure that: 
-  The writing style should balance between formal academic writing and conversational expression. 
-  Ensure that every sentence has a clear subject. Avoid using long or complex sentences. 
-  Use short sentences as much as possible.
-  Break paragraphs with two newlines.
+ ${PROFILE_RULES}`,
 
-  Lastly, Ensure all dates are in ISO format and all fields match exactly as specified.
-  `,
   JOB_MATCH: `Compare job description with candidate profile:
-    1. Extract from job:
-       - Company name -> targetCompany
-       - Position -> targetRole
-       - Job ID -> jobId
-       - Description -> jobDescription
-       - Required skills & qualifications
-  
+    1. Extract required skills & qualifications from job description
     2. Compare with profile:
        - Match similar terms (e.g., HTML5=HTML)
        - Include soft skills
        - Find missing requirements
-
-    3. Make the change to"targetRole, "targetCompany", "jobDescription" "jobId" (if any):
-       - Discard these fields from current profile
-       - Fill it from the content in given job description
   
     Return strict JSON only format:
     {
-      "missingKeywords": ["skill1", "skill2"],
-      "metadata": {
-        "targetRole": "",
-        "targetCompany": "",
-        "jobId": "",
-        "jobDescription": ""
-      }
+      "missingKeywords": ["skill1", "skill2"]
     }
   
     Note: Consolidate similar terms, no duplicates.`,
-  PROFILE_ENHANCE: `Given the current profile, job description, and missing keywords, please enhance the profile following these rules:
 
-  1. For missing keywords with rating >= 1:
-     - Add them to the skills section
-     - If description includes details, based on the rating:
-       - integrate into relevant sections use your best judgement and words:
-        - Add to summary if it's a general skill
-        - Add to experience if it's job-related
-        - Add to education if it's academic
-        - Add to projects if it's project-related
-        - Add to achievements if it's certification/award related
-      - If it's a general saying on something similar "I worked on school project" without saying when, put it into the latest school.
-      - Apply the same principle above to other sections.
+  PROFILE_ENHANCE: `Enhance profile based on job description and keywords:
 
-  2. For keywords with rating = 0:
-     - Do not add to skills
-     - Incorporate into cover letter positively, emphasizing:
-       - Eagerness to learn
-       - Transferable skills, for example, missing Azure or Google cloud, but user has AWS in profile.
-       - Related experience that could help quick learning
+    1. Extract and update metadata:
+       - targetCompany, targetRole, jobId from job description
+       - Set jobDescription to full description
+  
+    2. For keywords rated >= 1:
+       - Add to skills
+       - Based on description:
+         - Summary: general skills
+         - Experience: job skills
+         - Education: academic skills
+         - Projects: technical skills
+         - Achievements: certifications
+       - Add school-related items to latest education entry
+  
+    3. For keywords rated 0:
+       - Skip skills section
+       - Add to cover letter:
+         - Learning interest
+         - Similar/transferable skills
+         - Related experience
+  
+    4. General skills (e.g., debugging, feedback):
+       - Brief mention in summary
+       - Elaborate in cover letter
+  
+    5. Overall:
+       - Keep original facts
+       - Use professional tone
+       - Focus on job relevance
 
-  3. Overall Enhancement:
-     - Maintain truthfulness of the original profile
-     - Improve professional language
-     - Highlight relevant experiences
-     - Strengthen alignment with job description
-
-  4. For skills that is generallized such as Debugging, Diagnostic Skills, Give and Receive Feedback etc.
-     Just generate a short sentence in the summmary, and mentioned them in the cover letter..
-
-  5. Correctly find and fill/change "targetRole, "targetCompany", "jobDescription" "jobId" (if any) from the given job description into the return profile.
-
-
-  Return the enhanced profile in this exact JSON structure: ${JSON.stringify(
-    Object.fromEntries(
-      Object.entries(DEFAULT_PROFILE_STRUCTURE)
-        .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
-    ),
-    null,
-    2
-  )}
-  `,
+    ${PROFILE_RULES}
+  
+    Return exact JSON: ${JSON.stringify(
+      Object.fromEntries(
+        Object.entries(DEFAULT_PROFILE_STRUCTURE)
+          .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
+      ),
+      null,
+      2
+    )}`,
 };

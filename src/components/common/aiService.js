@@ -101,7 +101,6 @@ export const aiService = {
           rating: 0,
           description: ''
         })),
-        metadata: parsedData.metadata || {}
       };
     } catch (error) {
       console.error('Failed to parse analysis response:', error, response);

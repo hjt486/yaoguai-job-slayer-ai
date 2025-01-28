@@ -74,7 +74,6 @@ const Match = ({ setActiveTab }) => {
         throw new Error('Please enter a job description');
       }
 
-      // Wait for current user
       const currentUser = await authService.getCurrentUser();
       if (!currentUser?.id) {
         setActiveTab('settings');
@@ -87,83 +86,27 @@ const Match = ({ setActiveTab }) => {
         throw new Error('Please configure your API key in Settings');
       }
 
-      // Format API settings with defaults
       const formattedSettings = {
         apiKey: apiSettings.apiKey,
         apiEndpoint: apiSettings.apiEndpoint || '',
         modelName: apiSettings.modelName || ''
       };
 
-      // Debug: Log API call parameters
-      console.log('API Call Parameters:', {
-        settings: formattedSettings,
-        profile: currentProfile,
-        jobDescription: jobDescription
+      // Only analyze for missing keywords, don't update profile
+      const analysisData = await aiService.analyzeJobMatch(formattedSettings, {...currentProfile}, jobDescription);
+      
+      // Store only missing keywords in analysis results
+      setAnalysisResults({
+        missingKeywords: analysisData.missingKeywords
       });
 
-      const analysisData = await aiService.analyzeJobMatch(formattedSettings, currentProfile, jobDescription);
-      
-      // Debug: Log raw API response
-      console.log('Raw API Response:', analysisData);
-      
-      // Debug: Log before update
-      console.log('Before Update:', {
-        currentProfile,
-        storedProfile: JSON.parse(await storageService.getAsync('currentProfile')),
-        analysisMetadata: analysisData.metadata,
-        hasMetadata: !!analysisData.metadata,
-        metadataKeys: analysisData.metadata ? Object.keys(analysisData.metadata) : []
-      });
-
-      // Update current profile with job metadata
-      if (analysisData.metadata) {
-        // Get the latest stored profiles
-        const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
-        const currentUser = await authService.getCurrentUser();
-
-        const updatedProfile = {
-          ...currentProfile,
-          metadata: {
-            ...currentProfile.metadata,
-            ...analysisData.metadata,
-            lastModified: new Date().toISOString()
-          }
-        };
-        
-        console.log('Profile Update Process:', {
-          originalMetadata: currentProfile.metadata,
-          newMetadata: analysisData.metadata,
-          mergedMetadata: updatedProfile.metadata,
-          hasStoredProfiles: !!storedProfiles[currentUser.id],
-          profileId: updatedProfile.id
-        });
-        
-        // Update in stored profiles
-        if (storedProfiles[currentUser.id] && updatedProfile.id) {
-          storedProfiles[currentUser.id][updatedProfile.id] = updatedProfile;
-          await storageService.setAsync('userProfiles', JSON.stringify(storedProfiles));
-        }
-
-        // Update current profile in storage
-        await storageService.setAsync('currentProfile', JSON.stringify(updatedProfile));
-        
-        // Update state
-        setCurrentProfile(updatedProfile);
-        
-        // Debug: Log after update
-        console.log('After Update:', {
-          updatedProfile,
-          storedProfile: JSON.parse(await storageService.getAsync('currentProfile')),
-          storedUserProfiles: JSON.parse(await storageService.getAsync('userProfiles'))
-        });
-
-        // Trigger profile update event
-        window.dispatchEvent(new CustomEvent('profileLoaded', {
-          detail: { profile: updatedProfile }
-        }));
+      // Save analysis results without updating profile
+      if (currentUser?.id && currentProfile?.id) {
+        await storageService.setAsync(
+          `analysisResults_${currentUser.id}_${currentProfile.id}`,
+          JSON.stringify({ missingKeywords: analysisData.missingKeywords })
+        );
       }
-
-      setAnalysisResults(analysisData);
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err.message);
