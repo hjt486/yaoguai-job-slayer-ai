@@ -573,7 +573,7 @@ const Profiles = () => {
         {isParsing && (
           <div style={{ marginTop: '1rem' }}>
             <progress></progress>
-            <small>Analyzing resume content...</small>
+            <small>Analyzing resume content... don't close the extension window.</small>
           </div>
         )}
       </Modal>

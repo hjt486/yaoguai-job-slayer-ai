@@ -541,28 +541,51 @@ const Resume = () => {
     });
   };
 
-  const handleSectionSave = () => {
-    // Save to localStorage
-    const updatedProfile = {
-      ...profile,
-      metadata: {
-        ...profile.metadata,
-        lastModified: getCurrentISOString()
+  const handleSectionSave = async () => {
+      try {
+        // Save to localStorage
+        const updatedProfile = {
+          ...profile,
+          metadata: {
+            ...profile.metadata,
+            lastModified: getCurrentISOString()
+          }
+        };
+  
+        const currentUser = await authService.getCurrentUser();
+        if (!currentUser?.id) {
+          throw new Error('User not logged in');
+        }
+  
+        // Update in userProfiles
+        const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
+        if (!storedProfiles[currentUser.id]) {
+          storedProfiles[currentUser.id] = {};
+        }
+        storedProfiles[currentUser.id][profile.id] = updatedProfile;
+  
+        // Save all updates
+        await Promise.all([
+          storageService.setAsync('userProfiles', JSON.stringify(storedProfiles)),
+          storageService.setAsync('currentProfile', JSON.stringify(updatedProfile)),
+          storageService.setAsync(`lastLoadedProfile_${currentUser.id}`, profile.id.toString())
+        ]);
+  
+        // Update local state
+        setProfile(updatedProfile);
+  
+        // Dispatch events for other components
+        window.dispatchEvent(new CustomEvent('profileUpdated', {
+          detail: { profile: updatedProfile }
+        }));
+        window.dispatchEvent(new CustomEvent('profileLoaded', {
+          detail: { profile: updatedProfile }
+        }));
+      } catch (error) {
+        console.error('Error saving profile:', error);
+        // Optionally handle error state
       }
     };
-
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
-    storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
-    storedProfiles[currentUser.id][profile.id] = updatedProfile;
-
-    storageService.set('userProfiles', JSON.stringify(storedProfiles));
-    storageService.set('currentProfile', JSON.stringify(updatedProfile));
-
-    window.dispatchEvent(new CustomEvent('profileUpdated', {
-      detail: { profile: updatedProfile }
-    }));
-  };
 
   const handleGeneratePDF = async () => {
     setPdfGenerated(false);

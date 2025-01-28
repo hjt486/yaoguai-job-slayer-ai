@@ -360,13 +360,12 @@ export const AI_PROMPTS = {
   )}
 
   Note:
-  - For fields with long paragraph, please detect the point and separate each point with two newlines.
+  - For fields with long paragraph, please detect the point and separate each point with two newlines (IMPORTANT).
   - For certifications, extract any professional certifications, licenses, or relevant credentials.
   - Include certification names, issuing organizations, and dates awarded. 
   - For skills, parse all of them in single small item, don't categorize.
   
   Please also generate and fill cover letter based on the resume, make sure that: 
-  Please write a cover letter based on my resume and the job description provided. 
   The writing style should balance between formal academic writing and conversational expression. 
   Ensure that every sentence has a clear subject. Avoid using long or complex sentences. 
   Use short sentences as much as possible.
@@ -380,6 +379,8 @@ export const AI_PROMPTS = {
   Extract key technical skills, requirements, and qualifications from the job description.
   Compare these extracted keywords with the candidate's profile, focusing on both technical and soft skills.
   Identify missing keywords or skills by consolidating similar terms (e.g., HTML5 and HTML as "HTML," AWS as "Amazon Web Services (AWS)").
+  Currently find and fill the job role, job description, Job ID (if any) into the return profile.
+
   Return only a valid JSON object in this structure:
   { "missingKeywords": [ "keyword1", "keyword2" ] }
 
