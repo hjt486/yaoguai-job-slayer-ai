@@ -31,7 +31,17 @@ export const FIELD_PATTERNS = {
 
   // Experience
   experience: ['experience', 'years[_-]?of[_-]?experience', 'work[_-]?experience'],
-  summary: ['summary', 'about', 'background', 'profile', 'introduction']
+  summary: ['summary', 'about', 'background', 'profile', 'introduction'],
+  
+  // application_misc
+  country: [],
+  // Remove location from generic patterns and add specific address patterns
+  address_line_1: ['address[_-]?line[_-]?1', 'street[_-]?address', '^address$'],
+  city: ['^city$', 'municipality', 'town'],
+  county: [],
+  state: ['^state$', 'province', 'region', 'country[_-]?region'],
+  postal_code: ['zip[_-]?code', 'postal[_-]?code', 'zip'],
+  phone_type: [],
 };
 
 export const VALUE_MAPPINGS = {
@@ -43,5 +53,11 @@ export const VALUE_MAPPINGS = {
     'remote': ['remote', 'work from home', 'wfh'],
     'hybrid': ['hybrid', 'flexible', 'partial remote'],
     'onsite': ['onsite', 'in office', 'in-office']
+  },
+  
+  state: {
+    'TX': ['texas', 'tx'],
+    'CA': ['california', 'ca'],
+    'NY': ['new york', 'ny']
   }
 };

@@ -4,7 +4,9 @@ export const PLATFORM_PATTERNS = {
       'workday',
       'wd3',
       'myworkday',
-      'myworkdayjobs'
+      'myworkdayjobs',
+      '[data-automation-id="legalNameSection"]',  // Update to match actual HTML attribute
+      '[data-automation-id="addressSection"]',    // Update to match actual HTML attribute
     ],
     fields: {
       firstName: {
@@ -87,110 +89,9 @@ export const PLATFORM_PATTERNS = {
           'zip'
         ],
         profilePath: 'application_misc.postal_code'
-      },
-      county: {
-        selectors: [
-          'addressSection_regionSubdivision1',
-          'county',
-          'district'
-        ],
-        profilePath: 'application_misc.county'
-      },
-      country: {
-        selectors: [
-          'countryDropdown',
-          'input-4',
-          'country',
-          'nation'
-        ],
-        profilePath: 'application_misc.country'
-      },
-      phoneType: {
-        selectors: [
-          'phone-device-type',
-          'input-13',
-          'phoneType'
-        ],
-        profilePath: 'application_misc.phone_type'
-      },
-      phoneCountryCode: {
-        selectors: [
-          'country-phone-code',
-          'input-14',
-          'phoneCountry'
-        ],
-        profilePath: 'application_misc.phone_country_code'
-      },
-      resume: {
-        selectors: [
-          'upload-resume',
-          'select-files',
-          'drop-zone',
-          'attachCV',
-          'file-upload',
-          'upload-file',
-          'dropzone',
-          'add-file',
-          'attach-file',
-          'upload-resume',
-          'fileupload',
-          'file-input',
-          'resume-upload'
-        ],
-        profilePath: 'resume.file'
-      },
-      linkedin: {
-        selectors: [
-          'linkedin',
-          'linkedInUrl',
-          'socialMedia'
-        ],
-        profilePath: 'personal.linkedin'
-      },
-      workAuth: {
-        selectors: [
-          'workAuthorization',
-          'eligibleToWork',
-          'legallyAuthorized'
-        ],
-        profilePath: 'preferences.workAuthorization'
-      },
-      sponsorship: {
-        selectors: [
-          'requireSponsorship',
-          'visaSponsorship',
-          'needVisa'
-        ],
-        profilePath: 'preferences.requiresSponsorship'
-      },
-      experience: {
-        selectors: [
-          'yearsOfExperience',
-          'totalExperience',
-          'workExperience'
-        ],
-        profilePath: 'professional.yearsOfExperience'
-      },
-      referralSource: {
-        selectors: [
-          'sourceDropdown',
-          'formField-sourceDropdown',
-          'input-2',
-          'referral'
-        ],
-        profilePath: 'application_misc.referralSource'
-      },
-      previousEmployment: {
-        selectors: [
-          'previousWorker',
-          'formField-',
-          'input-3',
-          'priorEmployee'
-        ],
-        profilePath: 'application_misc.previousEmployment'
       }
     }
-  },
+  }
 };
 
 export const PLATFORM_VALUE_MAPPINGS = {

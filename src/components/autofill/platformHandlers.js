@@ -56,57 +56,95 @@ export const platformHandlers = {
     },
 
     async handleFileUpload(input, profile) {
+      console.log('[YaoguaiAI] Starting Workday resume upload...');
+      
       const resumeKey = `resumePDF_${profile.id}`;
       const resumeData = storageService.get(resumeKey);
       if (!resumeData) {
         throw new Error('No resume file found');
       }
 
-      // Try multiple selectors for the upload button
-      const selectFileButton = document.querySelector([
+      // Try to find the upload button using multiple possible selectors
+      const uploadButtonSelectors = [
         '[data-automation-id="select-files"]',
-        '[aria-label*="upload"]',
-        '[aria-label*="resume"]',
-        'button:has(span:contains("Upload"))'
-      ].join(','));
+        '[data-automation-id="quickApplyUpload"]',
+        'button[aria-label*="upload"]',
+        'button[aria-label*="resume"]'
+      ];
 
+      const selectFileButton = document.querySelector(uploadButtonSelectors.join(','));
+      
       if (selectFileButton) {
+        console.log('[YaoguaiAI] Found upload button, clicking...');
         selectFileButton.click();
+        
+        // Wait for the file input to appear
         await new Promise(resolve => setTimeout(resolve, 500));
 
-        // Try multiple selectors for the file input
-        const fileInput = document.querySelector([
+        // Look for the actual file input
+        const fileInputSelectors = [
           '[data-automation-id="file-upload-input-ref"]',
           'input[type="file"]',
-          '[aria-label*="file"]'
-        ].join(','));
+          '[data-automation-id*="resume"] input[type="file"]'
+        ];
+
+        const fileInput = document.querySelector(fileInputSelectors.join(','));
 
         if (fileInput) {
+          console.log('[YaoguaiAI] Found file input, injecting file...');
           const file = new File([resumeData], 'resume.pdf', { type: 'application/pdf' });
           const dataTransfer = new DataTransfer();
           dataTransfer.items.add(file);
           fileInput.files = dataTransfer.files;
           
+          // Dispatch both change and input events
           fileInput.dispatchEvent(new Event('change', { bubbles: true }));
           fileInput.dispatchEvent(new Event('input', { bubbles: true }));
+          
+          console.log('[YaoguaiAI] Resume upload completed');
           return true;
+        } else {
+          throw new Error('File input not found after clicking upload button');
         }
+      } else {
+        throw new Error('Upload button not found');
       }
-      return false;
     }
   },
   greenhouse: {
     async handleFileUpload(input, profile) {
-      const resumeKey = `resumePDF_${profile.id}`;
-      const resumeData = storageService.get(resumeKey);
-      if (!resumeData) {
-        throw new Error('No resume file found');
+      // First try to get the generated PDF
+      const pdfResumeKey = `resumePDF_${profile.id}`;
+      const pdfResume = storageService.get(pdfResumeKey);
+      
+      // If no PDF, try to get the original uploaded resume
+      if (!pdfResume) {
+        const originalResumeKey = `resume_${profile.id}`;
+        const originalResume = JSON.parse(storageService.get(originalResumeKey));
+        
+        if (!originalResume) {
+          throw new Error('No resume file found');
+        }
+      
+        // Use the original resume
+        const file = await fetch(originalResume.content)
+          .then(res => res.blob())
+          .then(blob => new File([blob], originalResume.name, { type: 'application/pdf' }));
+      
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        input.files = dataTransfer.files;
+      } else {
+        // Use the generated PDF
+        const file = await fetch(pdfResume)
+          .then(res => res.blob())
+          .then(blob => new File([blob], 'resume.pdf', { type: 'application/pdf' }));
+      
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        input.files = dataTransfer.files;
       }
-
-      const file = new File([resumeData], 'resume.pdf', { type: 'application/pdf' });
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      input.files = dataTransfer.files;
+      
       input.dispatchEvent(new Event('change', { bubbles: true }));
       return true;
     }

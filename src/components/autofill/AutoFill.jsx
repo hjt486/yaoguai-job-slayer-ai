@@ -336,57 +336,52 @@ export const FloatingPage = ({ onClose }) => {
   };
 
   const detectFieldType = (input) => {
-    if (!input || !(input instanceof Element)) {
-      return null;
-    }
-
-    const platform = detectPlatform();
-    const attributes = [
-      input.name,
-      input.id,
-      input.placeholder,
-      input.getAttribute('aria-label'),
-      input.getAttribute('data-automation-id'),
-      input.getAttribute('data-test'),
-      input.previousElementSibling?.textContent,
-      input.parentElement?.querySelector('label')?.textContent,
-      input.closest('[data-automation-id]')?.getAttribute('data-automation-id')
-    ].map(attr => attr?.toLowerCase().trim()).filter(Boolean);
-
-    console.log('[YaoguaiAI Debug] Field detection:', {
-      element: {
-        tag: input.tagName,
+      if (!input || !(input instanceof Element)) {
+        return null;
+      }
+  
+      console.log('\n[YaoguaiAI] ========== Field Detection Start ==========');
+      const platform = detectPlatform();
+      
+      // Early return if platform not supported
+      if (!platform || !PLATFORM_PATTERNS[platform]) {
+        console.log('[YaoguaiAI] ❌ Platform not supported:', platform);
+        console.log('[YaoguaiAI] ========== Field Detection End ==========\n');
+        return null;
+      }
+  
+      // Get data-automation-id which is primary identifier for Workday
+      const dataAutomationId = input.getAttribute('data-automation-id')?.toLowerCase();
+      
+      console.log('[YaoguaiAI] Checking field:', {
+        platform,
+        'data-automation-id': dataAutomationId,
         type: input.type,
-        id: input.id,
-        class: input.className
-      },
-      attributes,
-      platform
-    });
-
-    if (platform && PLATFORM_PATTERNS[platform]?.fields) {
-      for (const [type, fieldConfig] of Object.entries(PLATFORM_PATTERNS[platform].fields)) {
-        // Check if fieldConfig has selectors (new format) or is an array (old format)
-        const patterns = Array.isArray(fieldConfig) ? fieldConfig : fieldConfig.selectors;
-        
-        if (patterns && patterns.some(pattern =>
-          attributes.some(attr => attr?.includes(pattern.toLowerCase()))
-        )) {
-          return { type, attributes, platform };
+        tagName: input.tagName
+      });
+  
+      // Check each field type in the platform patterns
+      const fields = PLATFORM_PATTERNS[platform].fields;
+      for (const [fieldType, config] of Object.entries(fields)) {
+        // Convert selectors to lowercase for comparison
+        const matchFound = config.selectors.some(selector => 
+          selector.toLowerCase() === dataAutomationId
+        );
+  
+        if (matchFound) {
+          console.log('[YaoguaiAI] ✅ Match found:', {
+            fieldType,
+            matchedSelector: dataAutomationId
+          });
+          console.log('[YaoguaiAI] ========== Field Detection End ==========\n');
+          return { type: fieldType, platform };
         }
       }
-    }
-
-    for (const [type, patterns] of Object.entries(FIELD_PATTERNS)) {
-      if (patterns.some(pattern =>
-        attributes.some(attr => attr?.match(new RegExp(pattern, 'i')))
-      )) {
-        return { type, attributes, platform };
-      }
-    }
-
-    return null;
-  };
+  
+      console.log('[YaoguaiAI] ❌ No match found');
+      console.log('[YaoguaiAI] ========== Field Detection End ==========\n');
+      return null;
+    };
 
   const getValueMapping = (type, value, platform) => {
     // Check platform-specific mappings first
@@ -504,12 +499,28 @@ export const FloatingPage = ({ onClose }) => {
               }
             } else {
               const mappedValue = getValueMapping(fieldType, value, platform);
-              const matchingOption = options.find(opt =>
-                opt.text.toLowerCase().includes(mappedValue.toLowerCase())
+              console.log('[YaoguaiAI] Select field options:', {
+                options: options.map(opt => ({ value: opt.value, text: opt.text })),
+                mappedValue,
+                fieldType
+              });
+              
+              // Try exact match first
+              let matchingOption = options.find(opt => 
+                opt.value.toLowerCase() === mappedValue.toLowerCase() ||
+                opt.text.toLowerCase() === mappedValue.toLowerCase()
               );
 
+              // If no exact match, try includes
               if (!matchingOption) {
-                throw new Error('No matching option found');
+                matchingOption = options.find(opt =>
+                  opt.text.toLowerCase().includes(mappedValue.toLowerCase()) ||
+                  opt.value.toLowerCase().includes(mappedValue.toLowerCase())
+                );
+              }
+
+              if (!matchingOption) {
+                throw new Error(`No matching option found for value: ${mappedValue}`);
               }
               input.value = matchingOption.value;
             }
@@ -615,21 +626,30 @@ export const FloatingPage = ({ onClose }) => {
         try {
           const match = detectFieldType(input);
           if (match) {
-            const { type } = match;
-            const platform = detectPlatform();
+            const { type, platform } = match;  // Make sure we get both type and platform
             let value;
 
             // Get field mapping for current platform
-            const fieldMapping = PLATFORM_PATTERNS[platform]?.fields[type];
+            const fieldMapping = platform && PLATFORM_PATTERNS[platform]?.fields[type];
 
             if (fieldMapping?.profilePath) {
               // Use direct profile path mapping
               value = getProfileValue(profile, fieldMapping.profilePath);
+              console.log('[YaoguaiAI] Using profile path:', {
+                type,
+                path: fieldMapping.profilePath,
+                value
+              });
             } else {
               // Fallback for unmapped fields
               for (const section of Object.keys(profile)) {
                 if (profile[section]?.[type]) {
                   value = profile[section][type];
+                  console.log('[YaoguaiAI] Using fallback value:', {
+                    type,
+                    section,
+                    value
+                  });
                   break;
                 }
               }

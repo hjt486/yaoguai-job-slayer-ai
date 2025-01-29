@@ -7,8 +7,11 @@ import Resume from './components/resume/Resume';
 import Settings from './components/settings/Settings';
 import Match from './components/match/Match';
 import TabLayout from './components/layout/TabLayout';
+import TestForm from './components/test/TestForm'; // Add this import
 
-window.DEBUG = false; // Make DEBUG globally available
+window.DEBUG = true; // Make DEBUG globally available
+window.TEST_PAGE = '/test/workday.html'; // Fix path and add trailing semicolon
+window.TEST_ENTRY = 'workday'
 
 const App = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -43,6 +46,7 @@ const App = () => {
           {activeTab === 'resume' && <Resume />}
           {activeTab === 'match' && <Match setActiveTab={setActiveTab} />}
           {activeTab === 'settings' && <Settings />}
+          {window.DEBUG && activeTab === 'test' && <TestForm entry={window.TEST_ENTRY}/>}
         </TabLayout>
       )}
     </div>

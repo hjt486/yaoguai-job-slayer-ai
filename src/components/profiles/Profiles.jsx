@@ -471,7 +471,7 @@ const Profiles = () => {
   };
 
   return (
-    <article>
+    <article key="profiles-container">
       <fieldset role="group">
         <button type="button" onClick={handleFileSelect}>Load</button>
         <input
@@ -504,7 +504,7 @@ const Profiles = () => {
 
       {showPasteDialog && (
         <dialog open>
-          <article>
+          <article key="paste-dialog">
             <header>
               <h3>Paste Resume Text</h3>
             </header>
@@ -577,8 +577,9 @@ const Profiles = () => {
           </div>
         </article>
       ))}
+
       <div className='grid'>
-        <button onClick={handleCreateProfile} >Add New Profile</button>
+        <button onClick={handleCreateProfile}>Add New Profile</button>
       </div>
 
       <Modal
@@ -587,7 +588,7 @@ const Profiles = () => {
         showOKButton={false}
       >
         {isParsing && (
-          <div style={{ marginTop: '1rem' }}>
+          <div key="parsing-progress" style={{ marginTop: '1rem' }}>
             <progress></progress>
             <small>Analyzing resume content... don't close the extension window.</small>
           </div>
