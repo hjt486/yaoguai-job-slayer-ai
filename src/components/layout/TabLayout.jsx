@@ -17,13 +17,14 @@ const TabLayout = ({ activeTab, onTabChange, children }) => {
                 Profiles
               </button>
             ) : (
-              <li
+              <span
                 onClick={() => onTabChange('profiles')}
                 role="tab"
                 aria-selected="false"
+                style={{ cursor: 'pointer' }}
               >
                 Profiles
-              </li>
+              </span>
             )}
           </li>
           <li>
@@ -36,13 +37,14 @@ const TabLayout = ({ activeTab, onTabChange, children }) => {
                 Resume
               </button>
             ) : (
-              <li
+              <span
                 onClick={() => onTabChange('resume')}
                 role="tab"
                 aria-selected="false"
+                style={{ cursor: 'pointer' }}
               >
                 Resume
-              </li>
+              </span>
             )}
           </li>
           <li>
@@ -55,13 +57,14 @@ const TabLayout = ({ activeTab, onTabChange, children }) => {
                 Match
               </button>
             ) : (
-              <li
+              <span
                 onClick={() => onTabChange('match')}
                 role="tab"
                 aria-selected="false"
+                style={{ cursor: 'pointer' }}
               >
                 Match
-              </li>
+              </span>
             )}
           </li>
           <li>
@@ -74,13 +77,14 @@ const TabLayout = ({ activeTab, onTabChange, children }) => {
                 Settings
               </button>
             ) : (
-              <li
+              <span
                 onClick={() => onTabChange('settings')}
                 role="tab"
                 aria-selected="false"
+                style={{ cursor: 'pointer' }}
               >
                 Settings
-              </li>
+              </span>
             )}
           </li>
         </ul>

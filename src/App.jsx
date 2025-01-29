@@ -17,7 +17,6 @@ const App = () => {
     const checkAuth = async () => {
       try {
         const currentUser = await authService.getCurrentUser();
-        console.log("currentUser", currentUser);
         setIsLoggedIn(!!currentUser);
       } catch (error) {
         console.error('Auth check failed:', error);

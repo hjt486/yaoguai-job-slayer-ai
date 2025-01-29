@@ -14,20 +14,20 @@ export const formatDateTime = (date) => {
 
 export const formatDate = (date) => {
   if (!date) return '';
-  const m = moment(date);
-  if (!m.isValid()) return '';
+  
+  // Ensure proper date format by replacing single digits with leading zeros
+  const formattedInput = date.replace(/-(\d)(?!\d)/g, '-0$1');
+  
+  const momentDate = moment(formattedInput, [
+    'YYYY-MM-DD',    // Try ISO format first
+    'MM/DD/YYYY',    // Then common US format
+    'DD/MM/YYYY',    // Then common UK format
+    'YYYY-M-D',      // Then relaxed ISO format
+    'M/D/YYYY',      // Then relaxed US format
+    'D/M/YYYY'       // Then relaxed UK format
+  ], true);          // Strict parsing
 
-  // Check if the date string contains month and day
-  const dateStr = date.toString();
-  const hasMonth = dateStr.includes('-');
-  const hasDay = dateStr.includes('-') && dateStr.split('-').length > 2;
-
-  if (!hasMonth) {
-    return m.format('YYYY');
-  } else if (!hasDay) {
-    return m.format('MMMM YYYY');
-  }
-  return m.format('MMMM D, YYYY');
+  return momentDate.isValid() ? momentDate.format('MMMM YYYY') : '';
 };
 
 export const formatTime = (date) => {
