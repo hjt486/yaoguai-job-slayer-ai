@@ -28,10 +28,15 @@ const WorkdayForm = () => {
     fileInputRef.current.click();
   };
 
+  // Add selectedFile state
+  const [selectedFile, setSelectedFile] = useState(null);
+
+  // Update handleFileChange to set the file name
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (file) {
       console.log('Selected file:', file.name);
+      setSelectedFile(file.name);
     }
   };
 
@@ -41,7 +46,7 @@ const WorkdayForm = () => {
 
       {/* Upload Resume Section */}
       <div data-automation-id="fileUploadPanel">
-        <div data-automation-id="file-upload-drop-zone">
+        <div data-automation-id="file-upload-drop-zone" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <button 
             type="button" 
             data-automation-id="select-files"
@@ -49,6 +54,7 @@ const WorkdayForm = () => {
           >
             Select file
           </button>
+          {selectedFile && <span>{selectedFile}</span>}
           <input 
             ref={fileInputRef}
             type="file" 
