@@ -340,48 +340,56 @@ export const FloatingPage = ({ onClose }) => {
         return null;
       }
   
-      console.log('\n[YaoguaiAI] ========== Field Detection Start ==========');
       const platform = detectPlatform();
-      
-      // Early return if platform not supported
       if (!platform || !PLATFORM_PATTERNS[platform]) {
-        console.log('[YaoguaiAI] ❌ Platform not supported:', platform);
-        console.log('[YaoguaiAI] ========== Field Detection End ==========\n');
         return null;
       }
   
-      // Get data-automation-id which is primary identifier for Workday
-      const dataAutomationId = input.getAttribute('data-automation-id')?.toLowerCase();
+      console.log("\n[YaoguaiAI] ========== Field Detection Start ==========");
       
-      console.log('[YaoguaiAI] Checking field:', {
+      const dataAutomationId = input.getAttribute('data-automation-id')?.toLowerCase();
+      const name = input.name?.toLowerCase();
+      const id = input.id?.toLowerCase();
+      const ariaLabel = input.getAttribute('aria-label')?.toLowerCase();
+  
+      console.log('[YaoguaiAI] Field Detection:', {
         platform,
         'data-automation-id': dataAutomationId,
+        name,
+        id,
+        'aria-label': ariaLabel,
         type: input.type,
         tagName: input.tagName
       });
   
-      // Check each field type in the platform patterns
       const fields = PLATFORM_PATTERNS[platform].fields;
       for (const [fieldType, config] of Object.entries(fields)) {
-        // Convert selectors to lowercase for comparison
-        const matchFound = config.selectors.some(selector => 
-          selector.toLowerCase() === dataAutomationId
-        );
+        // Check all possible identifiers
+        const matchFound = config.selectors.some(selector => {
+          const selectorLower = selector.toLowerCase();
+          return (
+            (dataAutomationId && dataAutomationId === selectorLower) ||
+            (name && name === selectorLower) ||
+            (id && id === selectorLower) ||
+            (ariaLabel && ariaLabel === selectorLower)
+          );
+        });
   
         if (matchFound) {
           console.log('[YaoguaiAI] ✅ Match found:', {
             fieldType,
-            matchedSelector: dataAutomationId
+            element: input.tagName,
+            type: input.type
           });
-          console.log('[YaoguaiAI] ========== Field Detection End ==========\n');
+          console.log("[YaoguaiAI] ========== Field Detection End ==========")
           return { type: fieldType, platform };
         }
       }
   
       console.log('[YaoguaiAI] ❌ No match found');
-      console.log('[YaoguaiAI] ========== Field Detection End ==========\n');
+      console.log("[YaoguaiAI] ========== Field Detection End ==========")
       return null;
-    };
+  };
 
   const getValueMapping = (type, value, platform) => {
     // Check platform-specific mappings first
@@ -428,131 +436,95 @@ export const FloatingPage = ({ onClose }) => {
   // Update fillField to use highlighting
   const fillField = async (input, value, fieldType, platform) => {
     try {
-      const maxRetries = 3;
-      let attempt = 0;
+        const maxRetries = 3;
+        let attempt = 0;
 
-      while (attempt < maxRetries) {
-        try {
-          console.log('[YaoguaiAI] Attempting to fill field:', {
-            type: fieldType,
-            platform: platform,
-            attempt: attempt + 1,
-            inputType: input.type,
-            value: value
-          });
-
-          // Add validation before filling
-          if (!input.isConnected || input.disabled || input.readOnly) {
-            throw new Error('Field is not fillable');
-          }
-
-          // Add delay between field fills to prevent rate limiting
-          await new Promise(resolve => setTimeout(resolve, 100));
-
-          // Validate input element
-          if (!input || !input.isConnected) {
-            throw new Error('Invalid input element');
-          }
-
-          if (input.disabled || input.readOnly) {
-            throw new Error('Field is disabled or readonly');
-          }
-
-          // Handle checkbox and radio
-          if (input.type === 'checkbox' || input.type === 'radio') {
-            const shouldCheck = value.toLowerCase() === 'true';
-            input.checked = shouldCheck;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            return;
-          }
-
-          // Handle file uploads
-          if (input.type === 'file') {
-            console.log('[YaoguaiAI] Handling file upload for platform:', platform);
+        while (attempt < maxRetries) {
             try {
-              await handleFileUpload(input, profile, platform);
-              console.log('[YaoguaiAI] File upload successful');
-            } catch (fileError) {
-              console.error('[YaoguaiAI] File upload failed:', fileError);
-              throw new Error(`Resume upload failed: ${fileError.message}`);
+                console.log('[YaoguaiAI] Attempting to fill field:', {
+                    type: fieldType,
+                    platform: platform,
+                    attempt: attempt + 1,
+                    inputType: input.type,
+                    value: value
+                });
+
+                // Ensure the field is editable
+                if (!input.isConnected || input.disabled || input.readOnly) {
+                    throw new Error('Field is not fillable');
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 100)); // Delay to prevent rapid fills
+
+                // Special handling for file inputs
+                if (input.type === 'file') {
+                    console.log('[YaoguaiAI] Handling file upload for platform:', platform);
+                    try {
+                        await handleFileUpload(input, profile, platform);
+                        console.log('[YaoguaiAI] File upload successful');
+                    } catch (fileError) {
+                        console.error('[YaoguaiAI] File upload failed:', fileError);
+                        throw new Error(`Resume upload failed: ${fileError.message}`);
+                    }
+                    return;
+                }
+
+                // Special handling for select elements
+                if (input.tagName === 'SELECT') {
+                    const options = Array.from(input.options);
+                    const mappedValue = getValueMapping(fieldType, value, platform);
+
+                    let matchingOption = options.find(opt =>
+                        opt.value.toLowerCase() === mappedValue.toLowerCase() ||
+                        opt.text.toLowerCase().includes(mappedValue.toLowerCase())
+                    );
+
+                    if (!matchingOption) {
+                        throw new Error(`No matching option found for value: ${mappedValue}`);
+                    }
+
+                    input.value = matchingOption.value;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    return;
+                }
+
+                // Standard input fields (text, email, phone, etc.)
+                const nativeInputValueSetter = Object.getOwnPropertyDescriptor(
+                    window.HTMLInputElement.prototype, "value"
+                ).set;
+                
+                if (nativeInputValueSetter) {
+                    nativeInputValueSetter.call(input, value);
+                } else {
+                    input.value = value;
+                }
+
+                // **Ensure React detects the change**
+                const event = new Event('input', { bubbles: true });
+                input.dispatchEvent(event);
+
+                // Additional handling for React's internal state tracker
+                const tracker = input._valueTracker;
+                if (tracker) {
+                    tracker.setValue(value);
+                }
+
+                return; // Successfully filled, exit loop
+            } catch (error) {
+                attempt++;
+                if (attempt === maxRetries) {
+                    throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, 500)); // Retry delay
             }
-            return;
-          }
-
-          // Handle select elements
-          if (input.tagName === 'SELECT') {
-            const options = Array.from(input.options);
-            if (input.multiple) {
-              const values = Array.isArray(value) ? value : [value];
-              let matched = false;
-
-              options.forEach(option => {
-                const isSelected = values.some(v =>
-                  option.text.toLowerCase().includes(v.toLowerCase())
-                );
-                if (isSelected) matched = true;
-                option.selected = isSelected;
-              });
-
-              if (!matched) {
-                throw new Error('No matching options found for multi-select');
-              }
-            } else {
-              const mappedValue = getValueMapping(fieldType, value, platform);
-              console.log('[YaoguaiAI] Select field options:', {
-                options: options.map(opt => ({ value: opt.value, text: opt.text })),
-                mappedValue,
-                fieldType
-              });
-              
-              // Try exact match first
-              let matchingOption = options.find(opt => 
-                opt.value.toLowerCase() === mappedValue.toLowerCase() ||
-                opt.text.toLowerCase() === mappedValue.toLowerCase()
-              );
-
-              // If no exact match, try includes
-              if (!matchingOption) {
-                matchingOption = options.find(opt =>
-                  opt.text.toLowerCase().includes(mappedValue.toLowerCase()) ||
-                  opt.value.toLowerCase().includes(mappedValue.toLowerCase())
-                );
-              }
-
-              if (!matchingOption) {
-                throw new Error(`No matching option found for value: ${mappedValue}`);
-              }
-              input.value = matchingOption.value;
-            }
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-            return;
-          }
-
-          // Handle text inputs and textareas
-          input.value = value;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-
-          // Verify the value was set correctly
-          if (input.value !== value && !input.type === 'file' && !input.type === 'checkbox') {
-            throw new Error('Value verification failed');
-          }
-
-          return;
-        } catch (error) {
-          attempt++;
-          if (attempt === maxRetries) {
-            throw error;
-          }
-          await new Promise(resolve => setTimeout(resolve, 500));
         }
-      }
     } catch (error) {
-      console.error('Field fill error:', error);
-      highlightField(input, false);
-      throw error;
+        console.error('Field fill error:', error);
+        highlightField(input, false);
+        throw error;
     }
-  };
+};
+
 
   const [fillProgress, setFillProgress] = useState({ current: 0, total: 0 });
 
@@ -624,6 +596,7 @@ export const FloatingPage = ({ onClose }) => {
 
       for (const input of inputs) {
         try {
+          console.log("[YaoguaiAI] ========== Field Detection Start ==========")
           const match = detectFieldType(input);
           if (match) {
             const { type, platform } = match;  // Make sure we get both type and platform
