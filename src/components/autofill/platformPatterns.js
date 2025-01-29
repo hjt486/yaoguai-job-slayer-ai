@@ -5,10 +5,23 @@ export const PLATFORM_PATTERNS = {
       'wd3',
       'myworkday',
       'myworkdayjobs',
-      '[data-automation-id="legalNameSection"]',  // Update to match actual HTML attribute
-      '[data-automation-id="addressSection"]',    // Update to match actual HTML attribute
+      '[data-automation-id="fileUploadPanel"]',
+      '[data-automation-id="file-upload-input-ref"]'
     ],
     fields: {
+      resume: {
+        selectors: [
+          'file-upload-input-ref',
+          'fileUploadPanel',
+          'file-upload-drop-zone',
+          'select-files',
+          'quickApplyUpload',
+          'upload-resume',
+          'resume-upload'
+        ],
+        profilePath: 'resume.resumeFile',
+        type: 'file'
+      },
       firstName: {
         selectors: [
           'legalNameSection_firstName',

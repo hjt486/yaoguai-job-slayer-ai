@@ -64,50 +64,29 @@ export const platformHandlers = {
         throw new Error('No resume file found');
       }
 
-      // Try to find the upload button using multiple possible selectors
-      const uploadButtonSelectors = [
-        '[data-automation-id="select-files"]',
-        '[data-automation-id="quickApplyUpload"]',
-        'button[aria-label*="upload"]',
-        'button[aria-label*="resume"]'
+      // Ensure the correct selector is used for the file input
+      const fileInputSelectors = [
+        '[data-automation-id="file-upload-input-ref"]',
+        'input[type="file"]'
       ];
 
-      const selectFileButton = document.querySelector(uploadButtonSelectors.join(','));
-      
-      if (selectFileButton) {
-        console.log('[YaoguaiAI] Found upload button, clicking...');
-        selectFileButton.click();
+      const fileInput = document.querySelector(fileInputSelectors.join(','));
+
+      if (fileInput) {
+        console.log('[YaoguaiAI] Found file input, injecting file...');
+        const file = new File([resumeData], 'resume.pdf', { type: 'application/pdf' });
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        fileInput.files = dataTransfer.files;
         
-        // Wait for the file input to appear
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Look for the actual file input
-        const fileInputSelectors = [
-          '[data-automation-id="file-upload-input-ref"]',
-          'input[type="file"]',
-          '[data-automation-id*="resume"] input[type="file"]'
-        ];
-
-        const fileInput = document.querySelector(fileInputSelectors.join(','));
-
-        if (fileInput) {
-          console.log('[YaoguaiAI] Found file input, injecting file...');
-          const file = new File([resumeData], 'resume.pdf', { type: 'application/pdf' });
-          const dataTransfer = new DataTransfer();
-          dataTransfer.items.add(file);
-          fileInput.files = dataTransfer.files;
-          
-          // Dispatch both change and input events
-          fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-          fileInput.dispatchEvent(new Event('input', { bubbles: true }));
-          
-          console.log('[YaoguaiAI] Resume upload completed');
-          return true;
-        } else {
-          throw new Error('File input not found after clicking upload button');
-        }
+        // Dispatch both change and input events
+        fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+        fileInput.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        console.log('[YaoguaiAI] Resume upload completed');
+        return true;
       } else {
-        throw new Error('Upload button not found');
+        throw new Error('File input not found');
       }
     }
   },

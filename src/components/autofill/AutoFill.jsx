@@ -341,6 +341,13 @@ export const FloatingPage = ({ onClose }) => {
       }
   
       const platform = detectPlatform();
+      console.log('[YaoguaiAI] Platform detection for file upload:', {
+        platform,
+        inputType: input.type,
+        dataAutomationId: input.getAttribute('data-automation-id'),
+        tagName: input.tagName
+      });
+      
       if (!platform || !PLATFORM_PATTERNS[platform]) {
         return null;
       }
@@ -351,17 +358,19 @@ export const FloatingPage = ({ onClose }) => {
       const name = input.name?.toLowerCase();
       const id = input.id?.toLowerCase();
       const ariaLabel = input.getAttribute('aria-label')?.toLowerCase();
+      const parentDataAutomationId = input.closest('[data-automation-id]')?.getAttribute('data-automation-id')?.toLowerCase();
   
       console.log('[YaoguaiAI] Field Detection:', {
         platform,
         'data-automation-id': dataAutomationId,
+        'parent-data-automation-id': parentDataAutomationId,
         name,
         id,
         'aria-label': ariaLabel,
         type: input.type,
         tagName: input.tagName
       });
-  
+      
       const fields = PLATFORM_PATTERNS[platform].fields;
       for (const [fieldType, config] of Object.entries(fields)) {
         // Check all possible identifiers
