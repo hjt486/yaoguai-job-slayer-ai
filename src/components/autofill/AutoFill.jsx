@@ -327,7 +327,7 @@ export const FloatingPage = ({ onClose }) => {
       const matchedPattern = patterns.find(pattern =>
         url.includes(pattern) || html.includes(pattern)
       );
-      
+
       if (matchedPattern) {
         return platform;
       }
@@ -365,8 +365,11 @@ export const FloatingPage = ({ onClose }) => {
     });
 
     if (platform && PLATFORM_PATTERNS[platform]?.fields) {
-      for (const [type, patterns] of Object.entries(PLATFORM_PATTERNS[platform].fields)) {
-        if (patterns.some(pattern => 
+      for (const [type, fieldConfig] of Object.entries(PLATFORM_PATTERNS[platform].fields)) {
+        // Check if fieldConfig has selectors (new format) or is an array (old format)
+        const patterns = Array.isArray(fieldConfig) ? fieldConfig : fieldConfig.selectors;
+        
+        if (patterns && patterns.some(pattern =>
           attributes.some(attr => attr?.includes(pattern.toLowerCase()))
         )) {
           return { type, attributes, platform };
@@ -561,15 +564,15 @@ export const FloatingPage = ({ onClose }) => {
       console.log('[YaoguaiAI] No profile found, aborting autofill');
       return;
     }
-    
+
     setIsAutoFilling(true);
     setAutoFillStatus('Scanning page...');
     let filledCount = 0;
-    
+
     try {
       const platform = detectPlatform();
       console.log('[YaoguaiAI] Platform detected:', platform);
-      
+
       let inputs;
       if (targetInputs) {
         // Improved logging for targetInputs
@@ -583,7 +586,7 @@ export const FloatingPage = ({ onClose }) => {
         const selectors = getPlatformSelectors(platform).join(',');
         const allInputs = document.querySelectorAll(selectors);
         console.log('[YaoguaiAI] All inputs found:', allInputs?.length);
-        
+
         inputs = Array.from(allInputs || [])
           .filter(input => input instanceof HTMLElement && isFieldVisible(input));
         console.log('[YaoguaiAI] Visible inputs:', inputs.length);
@@ -591,8 +594,8 @@ export const FloatingPage = ({ onClose }) => {
 
       // Additional validation with logging
       inputs = inputs.filter(input => {
-        const isValid = input instanceof HTMLElement && 
-          input.tagName && 
+        const isValid = input instanceof HTMLElement &&
+          input.tagName &&
           ['INPUT', 'SELECT', 'TEXTAREA'].includes(input.tagName);
         if (!isValid) {
           console.log('[YaoguaiAI] Skipping invalid input:', input);
@@ -601,56 +604,35 @@ export const FloatingPage = ({ onClose }) => {
       });
 
       console.log('[YaoguaiAI] Valid inputs to process:', inputs.length);
-      
+
       setFillProgress({ current: 0, total: inputs.length });
-      
+
+      const getProfileValue = (profile, path) => {
+        return path.split('.').reduce((obj, key) => obj?.[key], profile);
+      };
+
       for (const input of inputs) {
         try {
           const match = detectFieldType(input);
           if (match) {
-            const { type, attributes } = match;
+            const { type } = match;
+            const platform = detectPlatform();
             let value;
 
-            // Handle special field types
-            switch (type) {
-              case 'firstName':
-                value = profile.personal?.name?.split(' ')[0];
-                break;
-              case 'lastName':
-                value = profile.personal?.name?.split(' ').slice(1).join(' ');
-                break;
-              case 'fullName':
-                value = profile.personal?.name;
-                break;
-              case 'email':
-                value = profile.contact?.email || profile.personal?.email;
-                break;
-              case 'phone':
-                value = profile.contact?.phone || profile.personal?.phone;
-                break;
-              case 'location':
-                value = profile.personal?.location || profile.contact?.location;
-                break;
-              case 'linkedin':
-                value = profile.social?.linkedin || profile.contact?.linkedin;
-                break;
-              case 'summary':
-                value = profile.summary || profile.about || profile.professional?.summary;
-                break;
-              case 'workAuth':
-                value = profile.preferences?.workAuthorization || 'true';
-                break;
-              case 'sponsorship':
-                value = profile.preferences?.requiresSponsorship || 'false';
-                break;
-              default:
-                // Search through all sections for matching field
-                for (const section of Object.keys(profile)) {
-                  if (profile[section]?.[type]) {
-                    value = profile[section][type];
-                    break;
-                  }
+            // Get field mapping for current platform
+            const fieldMapping = PLATFORM_PATTERNS[platform]?.fields[type];
+
+            if (fieldMapping?.profilePath) {
+              // Use direct profile path mapping
+              value = getProfileValue(profile, fieldMapping.profilePath);
+            } else {
+              // Fallback for unmapped fields
+              for (const section of Object.keys(profile)) {
+                if (profile[section]?.[type]) {
+                  value = profile[section][type];
+                  break;
                 }
+              }
             }
 
             if (value) {
@@ -708,7 +690,7 @@ export const FloatingPage = ({ onClose }) => {
             </header>
             <main style={{ maxHeight: '80vh', overflowY: 'auto' }}>
               <div className="grid">
-                <button 
+                <button
                   onClick={(e) => {
                     e.preventDefault();
                     handleAutoFill(null);  // Pass null instead of the event object
@@ -729,7 +711,7 @@ export const FloatingPage = ({ onClose }) => {
                 {skippedFields.length > 0 && (
                   <div className="grid">
                     <small>Fields skipped: {skippedFields.length}</small>
-                    <button 
+                    <button
                       onClick={() => handleAutoFill(skippedFields.map(f => f.input))}
                       className="outline"
                       disabled={isAutoFilling}

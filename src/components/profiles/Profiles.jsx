@@ -287,18 +287,34 @@ const Profiles = () => {
 
       // Extract JSON from AI response
       const content = aiResponse.choices[0].message.content;
-      const jsonMatch = content.match(/```json\n([\s\S]*?)\n```/);
-
-      if (!jsonMatch) {
-        throw new Error('Could not extract JSON from AI response');
-      }
-
       let resumeData;
       try {
-        resumeData = JSON.parse(jsonMatch[1]);
+        // First try to parse the content directly as JSON
+        resumeData = JSON.parse(content);
       } catch (e) {
-        console.error('JSON parse error:', jsonMatch[1]);
-        throw new Error('Failed to parse AI response into valid JSON');
+        // If direct parsing fails, try to extract JSON from markdown code blocks
+        const jsonMatch = content.match(/```(?:json)?\n?([\s\S]*?)(?:\n```|$)/);
+        if (!jsonMatch) {
+          // If no code blocks found, try to find JSON-like content
+          const jsonStart = content.indexOf('{');
+          const jsonEnd = content.lastIndexOf('}');
+          if (jsonStart === -1 || jsonEnd === -1) {
+            throw new Error('Could not extract JSON from AI response');
+          }
+          try {
+            resumeData = JSON.parse(content.slice(jsonStart, jsonEnd + 1));
+          } catch (e) {
+            console.error('JSON parse error:', content);
+            throw new Error('Failed to parse AI response into valid JSON');
+          }
+        } else {
+          try {
+            resumeData = JSON.parse(jsonMatch[1]);
+          } catch (e) {
+            console.error('JSON parse error:', jsonMatch[1]);
+            throw new Error('Failed to parse AI response into valid JSON');
+          }
+        }
       }
 
       // Find the next available ID

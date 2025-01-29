@@ -127,6 +127,7 @@ export const DEFAULT_PROFILE_STRUCTURE = {
     country: "",
     address_line_1: "",
     city: "",
+    county: "",
     state: "",
     postal_code: "",
     phone_type: ""
@@ -279,6 +280,7 @@ export const LABELS = {
         country: "Country",
         address_line_1: "Address Line 1",
         city: "City",
+        county: "County",
         state: "State",
         postal_code: "Postal Code",
         phone_type: "Phone Type",
