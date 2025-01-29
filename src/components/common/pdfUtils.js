@@ -120,10 +120,10 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
     };
 
     if (isCoverLetter) {
-      // Header with contact info
+      // First pass to measure content height
+      let tempYPos = margin;
       pdf.setFontSize(12);
-      pdf.text(profile.personal?.fullName || '', margin, yPos);
-      yPos += SPACING.headerGap;  // Instead of 20
+      tempYPos += SPACING.headerGap;
 
       const contactInfo = [
         profile.personal?.email || "",
@@ -131,26 +131,63 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
         profile.personal?.location || "",
       ].filter(Boolean);
 
+      tempYPos += SPACING.headerGap;
+      tempYPos += (contactInfo.length * SPACING.base);
+      tempYPos += SPACING.headerGap * 2;
+
+      // Measure cover letter content
+      if (profile.coverLetter) {
+        const paragraphs = profile.coverLetter.split('\n\n');
+        paragraphs.forEach(paragraph => {
+          const lines = pdf.splitTextToSize(paragraph, usableWidth);
+          tempYPos += (lines.length * SPACING.base) + SPACING.sectionGap;
+        });
+      }
+
+      // Calculate and apply spacing scale
+      const contentRatio = tempYPos / (pageHeight - (2 * margin));
+      let spacingScale = 1;
+
+      if (contentRatio < 0.9) {
+        spacingScale = Math.min(1.2, 1 / contentRatio);
+      } else if (contentRatio > 1 && contentRatio <= 1.3) {
+        spacingScale = 1 / contentRatio;
+      }
+
+      // Apply scaled spacing
+      const scaledSpacing = {
+        base: Math.floor(SPACING.base * spacingScale),
+        sectionGap: Math.floor(SPACING.sectionGap * spacingScale),
+        headerGap: Math.floor(SPACING.headerGap * spacingScale)
+      };
+
+      // Reset and render with scaled spacing
+      yPos = margin;
+      pdf.setFontSize(12);
+      pdf.text(profile.personal?.fullName || '', margin, yPos);
+      yPos += scaledSpacing.headerGap;
+
       // Date
       pdf.text(moment().format('MMMM D, YYYY'), margin, yPos);
+      yPos += scaledSpacing.headerGap;
 
-      yPos += SPACING.headerGap;  // Instead of 20
-
+      // Contact info
       contactInfo.forEach(info => {
         pdf.text(info, margin, yPos);
-        yPos += SPACING.base;  // Instead of 15
+        yPos += scaledSpacing.base;
       });
 
-      yPos += SPACING.headerGap * 2;  // Instead of 40
+      yPos += scaledSpacing.headerGap * 2;
 
       // Cover Letter content
       if (profile.coverLetter) {
+        pdf.setFontSize(12);
         const paragraphs = profile.coverLetter.split('\n\n');
         paragraphs.forEach(paragraph => {
           checkNewPage();
           const lines = pdf.splitTextToSize(paragraph, usableWidth);
           pdf.text(lines, margin, yPos);
-          yPos += (lines.length * SPACING.base) + SPACING.sectionGap;  // Instead of (lines.length * 15) + 20
+          yPos += (lines.length * scaledSpacing.base) + scaledSpacing.sectionGap;
         });
       }
 
