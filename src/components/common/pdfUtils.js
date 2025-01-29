@@ -4,11 +4,9 @@ import moment from 'moment';
 import { storageService } from '../../services/storageService';
 
 const SPACING = {
-  base: 10,          // Reduced from 12
-  sectionGap: 5,     // Reduced from 20
-  headerGap: 15,     // Reduced from 25
-  minScale: 0.15,    // Allows for tighter compression
-  maxScale: 1.2      // Keep the same max expansion
+  base: 10,          
+  sectionGap: 5,     
+  headerGap: 15,     
 };
 
 export const generatePDF = async (profile, fileName, profileId, isCoverLetter = false) => {
@@ -19,7 +17,7 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
       orientation: 'portrait'
     });
 
-    // Set initial configuration first
+    // Set initial configuration
     pdf.setFont('helvetica');
     const margin = 40;
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -27,50 +25,42 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
     let usableWidth = pageWidth - (2 * margin);
     let yPos = margin;
 
-    // Simplified calculateSpacing function focused on one-page fit
-    const calculateSpacing = (totalContent) => {
-      const availableSpace = pageHeight - (2 * margin);
-      const contentRatio = totalContent / availableSpace;
+    // Remove calculateSpacing and measureTotalContent functions
 
-      // If content is less than 1.2 pages, try to fit it into one page
-      if (contentRatio <= 1.2) {
-        const scale = 1 / contentRatio;
-        const adjustedScale = Math.max(SPACING.minScale, Math.min(SPACING.maxScale, scale));
-        
-        SPACING.base *= adjustedScale;
-        SPACING.sectionGap *= adjustedScale;
-        SPACING.headerGap *= adjustedScale;
-      }
-      // Otherwise, keep original spacing
-    };
-
-    // Measure content and calculate spacing
-    const measureTotalContent = () => {
-      let totalHeight = margin;
-      // Add measurements for each section
-      // ... measure all sections
-      return totalHeight;
-    };
-
-    const totalContent = measureTotalContent();
-    calculateSpacing(totalContent);
-
-
-    // Add content scaling function
-    const scaleContent = (contentHeight) => {
+    // Improved content scaling function
+    const scaleContent = () => {
       const maxHeight = pageHeight - (2 * margin);
-      if (contentHeight > maxHeight) {
-        const scale = maxHeight / contentHeight;
-        const minScale = 0.8; // Don't scale smaller than 80%
-
-        if (scale >= minScale) {
-          // Adjust margins and spacing
-          margin = Math.max(30, margin * scale);
-          usableWidth = pageWidth - (2 * margin);
-          pdf.setFontSize(pdf.getFontSize() * scale);
-          return true;
-        }
+      const contentRatio = yPos / maxHeight;
+      let scale = 1;
+    
+      // Case 1: Less than 1 page - stretch to fill
+      if (contentRatio < 0.9) {
+        scale = 1 / contentRatio;
+        scale = Math.min(scale, 1.2); // Don't stretch more than 120%
       }
+      // Case 2: Between 1-1.3 pages - compress to 1 page
+      else if (contentRatio > 1 && contentRatio <= 1.3) {
+        scale = 1 / contentRatio;
+      }
+      // Case 3: Between 2-2.3 pages - compress to 2 pages
+      else if (contentRatio > 2 && contentRatio <= 2.3) {
+        scale = 2 / contentRatio;
+      }
+      // Case 4: Between 3-3.3 pages - compress to 3 pages
+      else if (contentRatio > 3 && contentRatio <= 3.3) {
+        scale = 3 / contentRatio;
+      }
+    
+      // Apply scaling if needed
+      if (scale !== 1) {
+        scale = Math.max(0.8, scale); // Don't scale smaller than 80%
+        pdf.setFontSize(pdf.getFontSize() * scale);
+        SPACING.base = Math.floor(10 * scale);
+        SPACING.sectionGap = Math.floor(5 * scale);
+        SPACING.headerGap = Math.floor(15 * scale);
+        return true;
+      }
+    
       return false;
     };
 
