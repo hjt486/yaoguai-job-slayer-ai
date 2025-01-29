@@ -5,6 +5,9 @@ import * as ReactDOM from 'react-dom/client';
 import { authService } from '../../services/authService';
 import { getCurrentISOString } from '../common/dateUtils';
 import { storageService } from '../../services/storageService';
+import { aiService } from '../common/aiService';
+import { FIELD_PATTERNS, VALUE_MAPPINGS } from './fieldPatterns';
+import { PLATFORM_PATTERNS } from './platformPatterns';
 
 // Import CSS as raw strings using Vite's ?raw suffix
 import picoCss from '@picocss/pico/css/pico.css?raw';
@@ -27,7 +30,7 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
 
   // In the mountFloatingPage function's extension block:
   if (true) {
-  // if (isExtension()) {
+    // if (isExtension()) {
     const shadowRoot = hostContainer.attachShadow({ mode: 'open' });
 
     // 1. Create theme-aware container
@@ -106,13 +109,6 @@ const mountFloatingPage = (onClose, sendResponse = null) => {
       container,
       createStyle(scopedPico),
       createStyle(scopedApp)
-    );
-
-    // 4. Assemble styles in order
-    shadowRoot.append(
-      container,
-      createStyle(scopedPico),
-      createStyle(scopedApp),
     );
   } else {
     // DEV mode styling, NOT USED
@@ -223,16 +219,20 @@ export const FloatingPage = ({ onClose }) => {
     const loadCurrentProfile = () => {
       const savedProfile = storageService.get('currentProfile');
       if (savedProfile) {
-        setProfile(JSON.parse(savedProfile));
+        const parsedProfile = JSON.parse(savedProfile);
+        console.log('[YaoguaiAI] Current profile loaded:', parsedProfile);
+        setProfile(parsedProfile);
       }
     };
 
     const handleProfileUpdate = (e) => {
+      console.log('[YaoguaiAI] Profile updated:', e.detail.profile);
       setProfile(e.detail.profile);
     };
 
     const handleStorageChange = (e) => {
       if (e.key === 'currentProfile' || e.key?.startsWith('userProfiles')) {
+        console.log('[YaoguaiAI] Storage changed, reloading profile...');
         loadCurrentProfile();
       }
     };
@@ -248,34 +248,6 @@ export const FloatingPage = ({ onClose }) => {
       window.removeEventListener('profileLoaded', handleProfileUpdate);
     };
   }, []);
-
-  const handleSectionEdit = (section, updates) => {
-    setProfile(prevProfile => {
-      // ... copy the handleSectionEdit function from Resume.jsx ...
-    });
-  };
-
-  const handleSectionSave = () => {
-    const updatedProfile = {
-      ...profile,
-      metadata: {
-        ...profile.metadata,
-        lastModified: getCurrentISOString()
-      }
-    };
-
-    const currentUser = authService.getCurrentUser();
-    const storedProfiles = JSON.parse(storageService.get('userProfiles') || '{}');
-    storedProfiles[currentUser.id] = storedProfiles[currentUser.id] || {};
-    storedProfiles[currentUser.id][profile.id] = updatedProfile;
-
-    storageService.set('userProfiles', JSON.stringify(storedProfiles));
-    storageService.set('currentProfile', JSON.stringify(updatedProfile));
-
-    window.dispatchEvent(new CustomEvent('profileUpdated', {
-      detail: { profile: updatedProfile }
-    }));
-  };
 
   const handleMouseDown = (e) => {
     // Allow dragging on both collapsed state and header
@@ -343,6 +315,349 @@ export const FloatingPage = ({ onClose }) => {
     }
   }, [isDragging, position]);
 
+  const [autoFillStatus, setAutoFillStatus] = useState(null);
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
+
+  const detectPlatform = () => {
+    const url = window.location.href;
+    const html = document.documentElement.innerHTML;
+
+    for (const [platform, { patterns }] of Object.entries(PLATFORM_PATTERNS)) {
+      if (patterns.some(pattern =>
+        url.includes(pattern) || html.includes(pattern)
+      )) {
+        return platform;
+      }
+    }
+    return null;
+  };
+
+  const detectFieldType = (input) => {
+    if (!input || !(input instanceof Element)) {
+      console.log('[YaoguaiAI] Invalid input element:', input);
+      return null;
+    }
+
+    const platform = detectPlatform();
+    const attributes = [
+      input.name,
+      input.id,
+      input.placeholder,
+      input.getAttribute('aria-label'),
+      input.getAttribute('data-test'),
+      input.previousElementSibling?.textContent,
+      input.parentElement?.querySelector('label')?.textContent
+    ].map(attr => attr?.toLowerCase().trim());
+
+    // Check platform-specific patterns first
+    if (platform && PLATFORM_PATTERNS[platform].fields) {
+      for (const [type, patterns] of Object.entries(PLATFORM_PATTERNS[platform].fields)) {
+        if (patterns.some(pattern =>
+          attributes.some(attr => attr?.match(new RegExp(pattern, 'i')))
+        )) {
+          return { type, attributes, platform };
+        }
+      }
+    }
+
+    // Fall back to generic patterns
+    for (const [type, patterns] of Object.entries(FIELD_PATTERNS)) {
+      if (patterns.some(pattern =>
+        attributes.some(attr => attr?.match(new RegExp(pattern, 'i')))
+      )) {
+        return { type, attributes, platform };
+      }
+    }
+
+    return null;
+  };
+
+  const getValueMapping = (type, value, platform) => {
+    // Check platform-specific mappings first
+    if (platform && PLATFORM_VALUE_MAPPINGS[type]?.[platform]) {
+      const platformMappings = PLATFORM_VALUE_MAPPINGS[type][platform];
+      for (const [mappedValue, patterns] of Object.entries(platformMappings)) {
+        if (patterns.includes(value.toLowerCase())) {
+          return mappedValue;
+        }
+      }
+    }
+
+    // Fall back to generic mappings
+    if (VALUE_MAPPINGS[type]) {
+      for (const [mappedValue, patterns] of Object.entries(VALUE_MAPPINGS[type])) {
+        if (patterns.includes(value.toLowerCase())) {
+          return mappedValue;
+        }
+      }
+    }
+    return value;
+  };
+
+  const highlightField = (input, success = true) => {
+    if (!input || !(input instanceof HTMLElement)) {
+      console.log('[YaoguaiAI] Cannot highlight invalid input:', input);
+      return;
+    }
+
+    try {
+      const style = window.getComputedStyle(input);
+      const originalBackground = style.backgroundColor;
+      input.style.backgroundColor = success ? '#e6ffe6' : '#ffe6e6';
+      setTimeout(() => {
+        if (input.isConnected) {  // Check if element is still in DOM
+          input.style.backgroundColor = originalBackground;
+        }
+      }, 1000);
+    } catch (error) {
+      console.error('[YaoguaiAI] Error highlighting field:', error);
+    }
+  };
+
+  // Update fillField to use highlighting
+  const fillField = async (input, value, fieldType, platform) => {
+    try {
+      const maxRetries = 3;
+      let attempt = 0;
+
+      while (attempt < maxRetries) {
+        try {
+          // Add validation before filling
+          if (!input.isConnected || input.disabled || input.readOnly) {
+            throw new Error('Field is not fillable');
+          }
+
+          // Add delay between field fills to prevent rate limiting
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Validate input element
+          if (!input || !input.isConnected) {
+            throw new Error('Invalid input element');
+          }
+
+          if (input.disabled || input.readOnly) {
+            throw new Error('Field is disabled or readonly');
+          }
+
+          // Handle checkbox and radio
+          if (input.type === 'checkbox' || input.type === 'radio') {
+            const shouldCheck = value.toLowerCase() === 'true';
+            input.checked = shouldCheck;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+          }
+
+          // Handle file uploads
+          if (input.type === 'file') {
+            const resumeKey = `resumePDF_${profile.id}`;
+            const resumeData = storageService.get(resumeKey);
+            if (!resumeData) {
+              throw new Error('No resume file found');
+            }
+
+            try {
+              const file = new File([resumeData], 'resume.pdf', { type: 'application/pdf' });
+              const dataTransfer = new DataTransfer();
+              dataTransfer.items.add(file);
+              input.files = dataTransfer.files;
+              input.dispatchEvent(new Event('change', { bubbles: true }));
+            } catch (fileError) {
+              throw new Error(`Resume upload failed: ${fileError.message}`);
+            }
+            return;
+          }
+
+          // Handle select elements
+          if (input.tagName === 'SELECT') {
+            const options = Array.from(input.options);
+            if (input.multiple) {
+              const values = Array.isArray(value) ? value : [value];
+              let matched = false;
+
+              options.forEach(option => {
+                const isSelected = values.some(v =>
+                  option.text.toLowerCase().includes(v.toLowerCase())
+                );
+                if (isSelected) matched = true;
+                option.selected = isSelected;
+              });
+
+              if (!matched) {
+                throw new Error('No matching options found for multi-select');
+              }
+            } else {
+              const mappedValue = getValueMapping(fieldType, value, platform);
+              const matchingOption = options.find(opt =>
+                opt.text.toLowerCase().includes(mappedValue.toLowerCase())
+              );
+
+              if (!matchingOption) {
+                throw new Error('No matching option found');
+              }
+              input.value = matchingOption.value;
+            }
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            return;
+          }
+
+          // Handle text inputs and textareas
+          input.value = value;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+
+          // Verify the value was set correctly
+          if (input.value !== value && !input.type === 'file' && !input.type === 'checkbox') {
+            throw new Error('Value verification failed');
+          }
+
+          return;
+        } catch (error) {
+          attempt++;
+          if (attempt === maxRetries) {
+            throw error;
+          }
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    } catch (error) {
+      console.error('Field fill error:', error);
+      highlightField(input, false);
+      throw error;
+    }
+  };
+
+  const [fillProgress, setFillProgress] = useState({ current: 0, total: 0 });
+
+  const [skippedFields, setSkippedFields] = useState([]);
+
+  const isFieldVisible = (element) => {
+    const rect = element.getBoundingClientRect();
+    const style = window.getComputedStyle(element);
+    return !(rect.width === 0 ||
+      rect.height === 0 ||
+      style.visibility === 'hidden' ||
+      style.display === 'none' ||
+      style.opacity === '0');
+  };
+
+  // Update handleAutoFill to track skipped fields
+  const handleAutoFill = async (targetInputs = null) => {
+    setSkippedFields([]);
+    if (!profile) return;
+    
+    setIsAutoFilling(true);
+    setAutoFillStatus('Scanning page...');
+    let filledCount = 0;
+    
+    try {
+      const platform = detectPlatform();
+      console.log('[YaoguaiAI] Platform detected:', platform);
+      
+      let inputs;
+      if (targetInputs) {
+        console.log('[YaoguaiAI] Using target inputs:', targetInputs);
+        inputs = Array.isArray(targetInputs) ? targetInputs : [targetInputs];
+      } else {
+        // Fix the selector syntax
+        const allInputs = document.querySelectorAll('input:not([type="hidden"]), select, textarea');
+        console.log('[YaoguaiAI] All inputs found:', allInputs?.length);
+        inputs = Array.from(allInputs || [])
+          .filter(input => input instanceof HTMLElement && isFieldVisible(input));
+      }
+
+      // Additional validation
+      inputs = inputs.filter(input => 
+        input instanceof HTMLElement && 
+        input.tagName && 
+        ['INPUT', 'SELECT', 'TEXTAREA'].includes(input.tagName)
+      );
+      // Validate inputs array
+      inputs = inputs.filter(input => input instanceof Element);
+      console.log('[YaoguaiAI] Valid inputs:', inputs.length);
+      
+      // ... rest of the function
+      setFillProgress({ current: 0, total: inputs.length });
+      
+      for (const input of inputs) {
+        try {
+          const match = detectFieldType(input);
+          if (match) {
+            const { type, attributes } = match;
+            let value;
+
+            // Handle special field types
+            switch (type) {
+              case 'firstName':
+                value = profile.personal?.name?.split(' ')[0];
+                break;
+              case 'lastName':
+                value = profile.personal?.name?.split(' ').slice(1).join(' ');
+                break;
+              case 'fullName':
+                value = profile.personal?.name;
+                break;
+              case 'email':
+                value = profile.contact?.email || profile.personal?.email;
+                break;
+              case 'phone':
+                value = profile.contact?.phone || profile.personal?.phone;
+                break;
+              case 'location':
+                value = profile.personal?.location || profile.contact?.location;
+                break;
+              case 'linkedin':
+                value = profile.social?.linkedin || profile.contact?.linkedin;
+                break;
+              case 'summary':
+                value = profile.summary || profile.about || profile.professional?.summary;
+                break;
+              case 'workAuth':
+                value = profile.preferences?.workAuthorization || 'true';
+                break;
+              case 'sponsorship':
+                value = profile.preferences?.requiresSponsorship || 'false';
+                break;
+              default:
+                // Search through all sections for matching field
+                for (const section of Object.keys(profile)) {
+                  if (profile[section]?.[type]) {
+                    value = profile[section][type];
+                    break;
+                  }
+                }
+            }
+
+            if (value) {
+              const mappedValue = getValueMapping(type, value, platform);
+              await fillField(input, mappedValue, type, platform);
+              filledCount++;
+              highlightField(input, true);
+            }
+          }
+        } catch (error) {
+          console.error('Field fill error:', error);
+          highlightField(input, false);
+          setSkippedFields(prev => [...prev, { input, error: error.message }]);
+        } finally {
+          const newProgress = { current: fillProgress.current + 1, total: fillProgress.total };
+          setFillProgress(newProgress);
+          setAutoFillStatus(`Processed ${newProgress.current} of ${newProgress.total} fields...`);
+        }
+      }
+
+      const skipCount = skippedFields.length;
+      setAutoFillStatus(
+        `Completed: ${filledCount} fields filled${skipCount ? `, ${skipCount} skipped` : ''}`
+      );
+      setTimeout(() => setAutoFillStatus(null), 3000);
+    } catch (error) {
+      console.error('Auto-fill error:', error);
+      setAutoFillStatus('Error: ' + error.message);
+    } finally {
+      setIsAutoFilling(false);
+    }
+  };
+
   return (
     <div className="pico-scope">
       <div
@@ -366,6 +681,35 @@ export const FloatingPage = ({ onClose }) => {
               </nav>
             </header>
             <main style={{ maxHeight: '80vh', overflowY: 'auto' }}>
+              <div className="grid">
+                <button 
+                  onClick={handleAutoFill}
+                  disabled={isAutoFilling}
+                  className={isAutoFilling ? 'outline' : ''}
+                >
+                  {isAutoFilling ? 'Auto-filling...' : 'Auto Fill'}
+                </button>
+                {autoFillStatus && (
+                  <div className="text-center">
+                    <small>{autoFillStatus}</small>
+                    {fillProgress.total > 0 && (
+                      <progress value={fillProgress.current} max={fillProgress.total}></progress>
+                    )}
+                  </div>
+                )}
+                {skippedFields.length > 0 && (
+                  <div className="grid">
+                    <small>Fields skipped: {skippedFields.length}</small>
+                    <button 
+                      onClick={() => handleAutoFill(skippedFields.map(f => f.input))}
+                      className="outline"
+                      disabled={isAutoFilling}
+                    >
+                      Retry Failed Fields
+                    </button>
+                  </div>
+                )}
+              </div>
               {profile ? (
                 <>
                   {Object.entries(LABELS.sections)
@@ -377,8 +721,6 @@ export const FloatingPage = ({ onClose }) => {
                         title={label}
                         data={profile[section]}
                         profile={profile}
-                        onEdit={handleSectionEdit}
-                        onSave={handleSectionSave}
                         hideEdit={true}
                       />
                     ))}
