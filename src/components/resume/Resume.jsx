@@ -10,7 +10,7 @@ import {
   BOOLEAN_FIELDS,
   APPLICATION_ONLY_SECTIONS
 } from '../common/Constants';
-import { showFloatingPage } from '../autofill/Autofill';
+import { showFloatingPage } from '../autofill/AutoFill';
 import { authService } from '../../services/authService';
 import { formatDateTime, formatDate, getCurrentISOString } from '../common/dateUtils';
 import { generatePDF, downloadStoredPDF } from '../common/pdfUtils';
@@ -24,7 +24,13 @@ export const ResumeSection = ({ title, data, section, profile, onEdit, onSave, h
   const [originalData, setOriginalData] = useState(null);
 
   const handleEdit = () => {
-    setOriginalData(JSON.parse(JSON.stringify(data))); // Deep copy of current data
+    // Initialize empty section if it doesn't exist
+    const currentData = data || (
+      ARRAY_SECTIONS.includes(section) 
+        ? [] 
+        : (DEFAULT_PROFILE_STRUCTURE[section] || {})
+    );
+    setOriginalData(JSON.parse(JSON.stringify(currentData)));
     setIsEditing(true);
   };
 
@@ -589,7 +595,7 @@ const Resume = () => {
 
   const handleGeneratePDF = async () => {
     setPdfGenerated(false);
-    const fileName = `${profile.personal?.fullName || 'Resume'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_resume`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+    const fileName = `${profile.personal?.firstName + ' ' + profile.personal?.lastName || 'Resume'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_resume`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
 
     // Clear old PDF data before generating new one
     storageService.remove(`generatedPDF_${profile.id}`);
@@ -608,7 +614,7 @@ const Resume = () => {
 
   const handleGenerateCoverLetter = async () => {
     setCoverLetterGenerated(false);
-    const fileName = `${profile.personal?.fullName || 'Cover_Letter'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_cover_letter`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
+    const fileName = `${profile.personal?.firstName + " " + profile.personal?.lastName || 'Cover_Letter'}_${profile.metadata?.targetRole || ''}_${profile.metadata?.targetCompany || ''}_${moment().local().format('YYYY-MM-DD_HH_mm_ss')}_cover_letter`.replace(/[^\w\s-]/g, '').replace(/\s+/g, '_');
 
     // Only clear cover letter related data
     storageService.remove(`coverLetter_${profile.id}`);

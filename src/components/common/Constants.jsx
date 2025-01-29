@@ -18,8 +18,10 @@ export const DEFAULT_PROFILE_STRUCTURE = {
     lastModified: ""
   },
   // Resume Sections
+  // In DEFAULT_PROFILE_STRUCTURE
   personal: {
-    fullName: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     website: "",
@@ -27,6 +29,7 @@ export const DEFAULT_PROFILE_STRUCTURE = {
     location: "",
     summary: ""
   },
+
   education: [
     {
       school: "",
@@ -120,6 +123,14 @@ export const DEFAULT_PROFILE_STRUCTURE = {
       proficiency: ""
     }
   ],
+  application_misc: {
+    country: "",
+    address_line_1: "",
+    city: "",
+    state: "",
+    postal_code: "",
+    phone_type: ""
+  },
 }
 
 export const LABELS = {
@@ -137,10 +148,12 @@ export const LABELS = {
         lastModified: "Last Modified"
       }
     },
+    // In LABELS.sections
     personal: {
       name: "Personal Information",
       fields: {
-        fullName: "Full Name",
+        firstName: "First Name",
+        lastName: "Last Name",
         email: "Email Address",
         phone: "Phone Number",
         location: "Location",
@@ -260,6 +273,17 @@ export const LABELS = {
         proficiency: "Proficiency Level"
       }
     },
+    application_misc: {
+      name: "Application Misc.",
+      fields: {
+        country: "Country",
+        address_line_1: "Address Line 1",
+        city: "City",
+        state: "State",
+        postal_code: "Postal Code",
+        phone_type: "Phone Type",
+      }
+    },
   },
   actions: {
     edit: "Edit",
@@ -307,7 +331,8 @@ export const APPLICATION_ONLY_SECTIONS = [
   'legal_authorization',
   'work_preferences',
   'salary_expectations',
-  'languages'
+  'languages',
+  'application_misc',
 ];
 
 export const BOOLEAN_FIELDS = [
@@ -364,15 +389,15 @@ const PROFILE_RULES = ` Profile Rules:
     - Certifications: name, issuer, date`
 
 export const AI_PROMPTS = {
-  RESUME_PARSE: `Parse resume into JSON structure:
+  RESUME_PARSE: `Parse resume into strict JSON structure, NO MARKDOWN blocks:
   ${JSON.stringify(
-      Object.fromEntries(
-        Object.entries(DEFAULT_PROFILE_STRUCTURE)
-          .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
-      ),
-      null,
-      2
-    )}
+    Object.fromEntries(
+      Object.entries(DEFAULT_PROFILE_STRUCTURE)
+        .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
+    ),
+    null,
+    2
+  )}
   
  ${PROFILE_RULES}`,
 
@@ -425,11 +450,11 @@ export const AI_PROMPTS = {
     ${PROFILE_RULES}
   
     Return exact JSON: ${JSON.stringify(
-      Object.fromEntries(
-        Object.entries(DEFAULT_PROFILE_STRUCTURE)
-          .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
-      ),
-      null,
-      2
-    )}`,
+    Object.fromEntries(
+      Object.entries(DEFAULT_PROFILE_STRUCTURE)
+        .filter(([key]) => !APPLICATION_ONLY_SECTIONS.includes(key))
+    ),
+    null,
+    2
+  )}`,
 };

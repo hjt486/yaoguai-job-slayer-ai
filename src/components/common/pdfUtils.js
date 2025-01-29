@@ -164,7 +164,7 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
       // Reset and render with scaled spacing
       yPos = margin;
       pdf.setFontSize(12);
-      pdf.text(profile.personal?.fullName || '', margin, yPos);
+      pdf.text(profile.personal?.firstName + ' ' + profile.personal?.lastName  || '', margin, yPos);
       yPos += scaledSpacing.headerGap;
 
       // Date
@@ -199,7 +199,7 @@ export const generatePDF = async (profile, fileName, profileId, isCoverLetter = 
       if (profile.personal) {
         pdf.setFontSize(16);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(cleanText(profile.personal.fullName) || '', pageWidth / 2, yPos, { align: 'center' });
+        pdf.text(cleanText(profile.personal?.firstName + ' ' + profile.personal?.lastName) || '', pageWidth / 2, yPos, { align: 'center' });
 
         yPos += SPACING.headerGap;  // Instead of 20
         pdf.setFontSize(10);

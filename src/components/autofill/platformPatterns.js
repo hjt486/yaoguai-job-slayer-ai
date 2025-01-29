@@ -7,16 +7,128 @@ export const PLATFORM_PATTERNS = {
       'myworkdayjobs'
     ],
     fields: {
-      firstName: ['firstName', 'input-1', 'first-name', 'given-name'],
-      lastName: ['lastName', 'input-2', 'last-name', 'family-name'],
-      email: ['email', 'username', 'input-3', 'emailAddress'],
-      phone: ['phone', 'input-4', 'phoneNumber', 'mobile'],
-      location: ['location', 'address', 'input-5', 'cityState'],
-      resume: ['resume', 'upload-1', 'attachCV'],
-      linkedin: ['linkedin', 'linkedInUrl', 'socialMedia'],
-      workAuth: ['legallyAuthorized', 'workAuthorization', 'eligibleToWork'],
-      sponsorship: ['requireSponsorship', 'needVisa', 'visaSponsorship'],
-      experience: ['yearsOfExperience', 'totalExperience', 'workExperience']
+      firstName: [
+        'legalNameSection_firstName',
+        'input-5',
+        'First Name',
+        'firstName',
+        'first-name',
+        'given-name'
+      ],
+      lastName: [
+        'legalNameSection_lastName',
+        'input-6',
+        'Last Name',
+        'lastName',
+        'last-name',
+        'family-name'
+      ],
+      email: [
+        'email',
+        'input-12',
+        'emailAddress',
+        'username',
+        'input-3'
+      ],
+      phone: [
+        'phone-number',
+        'phoneNumber',
+        'mobile',
+        'phone'
+      ],
+      phone_extension: [
+        'phone-extension',
+        'extension',
+        'phoneExt'
+      ],
+      address_line_1: [
+        'addressSection_addressLine1',
+        'address-line-1',
+        'street-address'
+      ],
+      city: [
+        'addressSection_city',
+        'city',
+        'municipality'
+      ],
+      state: [
+        'addressSection_countryRegion',
+        'state',
+        'region'
+      ],
+      postal_code: [
+        'addressSection_postalCode',
+        'postal-code',
+        'zip'
+      ],
+      county: [
+        'addressSection_regionSubdivision1',
+        'county',
+        'district'
+      ],
+      country: [
+        'countryDropdown',
+        'input-4',
+        'country',
+        'nation'
+      ],
+      phoneType: [
+        'phone-device-type',
+        'input-13',
+        'phoneType'
+      ],
+      phoneCountryCode: [
+        'country-phone-code',
+        'input-14',
+        'phoneCountry'
+      ],
+      resume: [
+        'upload-resume',
+        'select-files',
+        'drop-zone',
+        'attachCV',
+        'file-upload',
+        'upload-file',
+        'dropzone',
+        'add-file',
+        'attach-file',
+        'upload-resume',
+        'fileupload',
+        'file-input',
+        'resume-upload'
+      ],
+      linkedin: [
+        'linkedin',
+        'linkedInUrl',
+        'socialMedia'
+      ],
+      workAuth: [
+        'workAuthorization',
+        'eligibleToWork',
+        'legallyAuthorized'
+      ],
+      sponsorship: [
+        'requireSponsorship',
+        'visaSponsorship',
+        'needVisa'
+      ],
+      experience: [
+        'yearsOfExperience',
+        'totalExperience',
+        'workExperience'
+      ],
+      referralSource: [
+        'sourceDropdown',
+        'formField-sourceDropdown',
+        'input-2',
+        'referral'
+      ],
+      previousEmployment: [
+        'previousWorker',
+        'formField-',
+        'input-3',
+        'priorEmployee'
+      ]
     }
   },
   greenhouse: {
@@ -35,7 +147,43 @@ export const PLATFORM_PATTERNS = {
       workAuth: ['job_application[eligible_to_work]', 'work-authorization'],
       sponsorship: ['job_application[requires_sponsorship]', 'visa-sponsorship'],
       location: ['job_application[location]', 'preferred-location'],
-      summary: ['job_application[cover_letter]', 'cover-letter']
+      summary: ['job_application[cover_letter]', 'cover-letter'],
+      country: [
+        'countryDropdown',
+        'country-select',
+        'country',
+        'nation'
+      ],
+      address_line_1: [
+        'addressSection_addressLine1',
+        'address-line-1',
+        'street-address',
+        'address1'
+      ],
+      city: [
+        'addressSection_city',
+        'city',
+        'municipality',
+        'townCity'
+      ],
+      state: [
+        'addressSection_countryRegion',
+        'state',
+        'region',
+        'province'
+      ],
+      postal_code: [
+        'addressSection_postalCode',
+        'postal-code',
+        'zip',
+        'zipCode'
+      ],
+      phone_type: [
+        'phone-device-type',
+        'phoneType',
+        'phone-type',
+        'device-type'
+      ]
     }
   },
   lever: {
@@ -45,6 +193,8 @@ export const PLATFORM_PATTERNS = {
       'hire.lever.co'
     ],
     fields: {
+      firstName: ['first-name', 'fname', 'first', 'given-name'],
+      lastName: ['last-name', 'lname', 'last', 'family-name'],
       fullName: ['name', 'full-name', 'candidate-name'],
       email: ['email', 'email-address', 'candidate-email'],
       resume: ['resume', 'resume-upload', 'cv-upload'],

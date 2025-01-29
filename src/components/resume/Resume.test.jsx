@@ -44,7 +44,8 @@ describe('Resume Component', () => {
   const mockProfile = {
     id: 1,
     personal: {
-      fullName: 'John Doe',
+      firstName: 'John',
+      lastName: 'Doe',
       email: 'john@example.com'
     },
     metadata: {

@@ -7,7 +7,8 @@ import { getCurrentISOString } from '../common/dateUtils';
 import { storageService } from '../../services/storageService';
 import { aiService } from '../common/aiService';
 import { FIELD_PATTERNS, VALUE_MAPPINGS } from './fieldPatterns';
-import { PLATFORM_PATTERNS } from './platformPatterns';
+import { PLATFORM_PATTERNS, PLATFORM_VALUE_MAPPINGS } from './platformPatterns';
+import { handleFileUpload, getPlatformSelectors } from './platformHandlers';
 
 // Import CSS as raw strings using Vite's ?raw suffix
 import picoCss from '@picocss/pico/css/pico.css?raw';
@@ -323,9 +324,11 @@ export const FloatingPage = ({ onClose }) => {
     const html = document.documentElement.innerHTML;
 
     for (const [platform, { patterns }] of Object.entries(PLATFORM_PATTERNS)) {
-      if (patterns.some(pattern =>
+      const matchedPattern = patterns.find(pattern =>
         url.includes(pattern) || html.includes(pattern)
-      )) {
+      );
+      
+      if (matchedPattern) {
         return platform;
       }
     }
@@ -334,7 +337,6 @@ export const FloatingPage = ({ onClose }) => {
 
   const detectFieldType = (input) => {
     if (!input || !(input instanceof Element)) {
-      console.log('[YaoguaiAI] Invalid input element:', input);
       return null;
     }
 
@@ -344,23 +346,34 @@ export const FloatingPage = ({ onClose }) => {
       input.id,
       input.placeholder,
       input.getAttribute('aria-label'),
+      input.getAttribute('data-automation-id'),
       input.getAttribute('data-test'),
       input.previousElementSibling?.textContent,
-      input.parentElement?.querySelector('label')?.textContent
-    ].map(attr => attr?.toLowerCase().trim());
+      input.parentElement?.querySelector('label')?.textContent,
+      input.closest('[data-automation-id]')?.getAttribute('data-automation-id')
+    ].map(attr => attr?.toLowerCase().trim()).filter(Boolean);
 
-    // Check platform-specific patterns first
-    if (platform && PLATFORM_PATTERNS[platform].fields) {
+    console.log('[YaoguaiAI Debug] Field detection:', {
+      element: {
+        tag: input.tagName,
+        type: input.type,
+        id: input.id,
+        class: input.className
+      },
+      attributes,
+      platform
+    });
+
+    if (platform && PLATFORM_PATTERNS[platform]?.fields) {
       for (const [type, patterns] of Object.entries(PLATFORM_PATTERNS[platform].fields)) {
-        if (patterns.some(pattern =>
-          attributes.some(attr => attr?.match(new RegExp(pattern, 'i')))
+        if (patterns.some(pattern => 
+          attributes.some(attr => attr?.includes(pattern.toLowerCase()))
         )) {
           return { type, attributes, platform };
         }
       }
     }
 
-    // Fall back to generic patterns
     for (const [type, patterns] of Object.entries(FIELD_PATTERNS)) {
       if (patterns.some(pattern =>
         attributes.some(attr => attr?.match(new RegExp(pattern, 'i')))
@@ -422,6 +435,14 @@ export const FloatingPage = ({ onClose }) => {
 
       while (attempt < maxRetries) {
         try {
+          console.log('[YaoguaiAI] Attempting to fill field:', {
+            type: fieldType,
+            platform: platform,
+            attempt: attempt + 1,
+            inputType: input.type,
+            value: value
+          });
+
           // Add validation before filling
           if (!input.isConnected || input.disabled || input.readOnly) {
             throw new Error('Field is not fillable');
@@ -449,19 +470,12 @@ export const FloatingPage = ({ onClose }) => {
 
           // Handle file uploads
           if (input.type === 'file') {
-            const resumeKey = `resumePDF_${profile.id}`;
-            const resumeData = storageService.get(resumeKey);
-            if (!resumeData) {
-              throw new Error('No resume file found');
-            }
-
+            console.log('[YaoguaiAI] Handling file upload for platform:', platform);
             try {
-              const file = new File([resumeData], 'resume.pdf', { type: 'application/pdf' });
-              const dataTransfer = new DataTransfer();
-              dataTransfer.items.add(file);
-              input.files = dataTransfer.files;
-              input.dispatchEvent(new Event('change', { bubbles: true }));
+              await handleFileUpload(input, profile, platform);
+              console.log('[YaoguaiAI] File upload successful');
             } catch (fileError) {
+              console.error('[YaoguaiAI] File upload failed:', fileError);
               throw new Error(`Resume upload failed: ${fileError.message}`);
             }
             return;
@@ -543,7 +557,10 @@ export const FloatingPage = ({ onClose }) => {
   // Update handleAutoFill to track skipped fields
   const handleAutoFill = async (targetInputs = null) => {
     setSkippedFields([]);
-    if (!profile) return;
+    if (!profile) {
+      console.log('[YaoguaiAI] No profile found, aborting autofill');
+      return;
+    }
     
     setIsAutoFilling(true);
     setAutoFillStatus('Scanning page...');
@@ -555,27 +572,36 @@ export const FloatingPage = ({ onClose }) => {
       
       let inputs;
       if (targetInputs) {
-        console.log('[YaoguaiAI] Using target inputs:', targetInputs);
+        // Improved logging for targetInputs
+        console.log('[YaoguaiAI] Target inputs:', {
+          value: targetInputs,
+          isArray: Array.isArray(targetInputs),
+          count: Array.isArray(targetInputs) ? targetInputs.length : 1
+        });
         inputs = Array.isArray(targetInputs) ? targetInputs : [targetInputs];
       } else {
-        // Fix the selector syntax
-        const allInputs = document.querySelectorAll('input:not([type="hidden"]), select, textarea');
+        const selectors = getPlatformSelectors(platform).join(',');
+        const allInputs = document.querySelectorAll(selectors);
         console.log('[YaoguaiAI] All inputs found:', allInputs?.length);
+        
         inputs = Array.from(allInputs || [])
           .filter(input => input instanceof HTMLElement && isFieldVisible(input));
+        console.log('[YaoguaiAI] Visible inputs:', inputs.length);
       }
 
-      // Additional validation
-      inputs = inputs.filter(input => 
-        input instanceof HTMLElement && 
-        input.tagName && 
-        ['INPUT', 'SELECT', 'TEXTAREA'].includes(input.tagName)
-      );
-      // Validate inputs array
-      inputs = inputs.filter(input => input instanceof Element);
-      console.log('[YaoguaiAI] Valid inputs:', inputs.length);
+      // Additional validation with logging
+      inputs = inputs.filter(input => {
+        const isValid = input instanceof HTMLElement && 
+          input.tagName && 
+          ['INPUT', 'SELECT', 'TEXTAREA'].includes(input.tagName);
+        if (!isValid) {
+          console.log('[YaoguaiAI] Skipping invalid input:', input);
+        }
+        return isValid;
+      });
+
+      console.log('[YaoguaiAI] Valid inputs to process:', inputs.length);
       
-      // ... rest of the function
       setFillProgress({ current: 0, total: inputs.length });
       
       for (const input of inputs) {
@@ -683,7 +709,10 @@ export const FloatingPage = ({ onClose }) => {
             <main style={{ maxHeight: '80vh', overflowY: 'auto' }}>
               <div className="grid">
                 <button 
-                  onClick={handleAutoFill}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleAutoFill(null);  // Pass null instead of the event object
+                  }}
                   disabled={isAutoFilling}
                   className={isAutoFilling ? 'outline' : ''}
                 >
