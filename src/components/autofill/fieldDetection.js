@@ -28,35 +28,49 @@ export const detectFieldType = (input) => {
   });
   
   const fields = PLATFORM_PATTERNS[platform].fields;
-  // Prioritize fields (country before state)
+  // Prioritize fields and sort by specificity (longer names first to avoid partial matches)
   const fieldTypes = Object.entries(fields).sort(([a], [b]) => {
+    // First prioritize country
     if (a === 'country') return -1;
     if (b === 'country') return 1;
-    return 0;
+    // Then sort by length (longer names first) to avoid partial matches
+    // e.g., 'phone_type' should be checked before 'phone'
+    return b.length - a.length;
   });
 
   for (const [fieldType, config] of fieldTypes) {
     const exactMatch = config.selectors.some(selector => {
-      // For CSS selectors
+      // For CSS selectors, keep as-is since they need to work with querySelector
       if (selector.startsWith('[') || selector.startsWith('.') || 
           selector.startsWith('#') || selector.startsWith('input') ||
           selector.startsWith('button')) {
         return input.matches(selector);
       }
-
-      // For direct attribute matching (exact matches only)
-      return Object.entries(identifiers).some(([_, value]) => {
+  
+      // For direct attribute matching - use exact matches only
+      return Object.entries(identifiers).some(([key, value]) => {
         if (!value) return false;
-        return value.toLowerCase() === selector.toLowerCase();
+        const valueLower = value.toLowerCase();
+        const selectorLower = selector.toLowerCase();
+  
+        // For all identifiers, require exact match
+        return valueLower === selectorLower;
       });
     });
-
+  
     if (exactMatch) {
+      // Additional type check for phone vs phone_type
+      if (fieldType === 'phone' && input.tagName === 'BUTTON') {
+        continue; // Skip phone matches on button elements
+      }
+      if (fieldType === 'phone_type' && input.tagName !== 'BUTTON') {
+        continue; // Skip phone_type matches on non-button elements
+      }
+  
       console.log('[YaoguaiAI] ✅ Exact match found:', {
         fieldType,
         element: input.tagName,
-        type: input.type,
-        matchedSelector: selector
+        type: input.type
       });
       console.log("[YaoguaiAI] ========== Field Detection End ==========");
       return { type: fieldType, platform };

@@ -9,43 +9,26 @@ export const PLATFORM_PATTERNS = {
       '[data-automation-id="file-upload-input-ref"]'
     ],
     fields: {
-      resume: {
+      country: {
         selectors: [
-          '[data-automation-id="file-upload-input-ref"]',
-          '[data-automation-id="fileUploadPanel"]',
-          '[data-automation-id="file-upload-drop-zone"]',
-          '[data-automation-id="select-files"]',
-          '[data-automation-id="quickApplyUpload"]',
-          'input[type="file"]'
+          'countryDropdown',  // Exact match for data-automation-id
         ],
-        profilePath: 'resume.resumeFile',
-        type: 'file',
-        buttonSelectors: [
-          '[data-automation-id="select-files"]',
-          '[data-automation-id="quickApplyUpload"]'
-        ]
-      },
+        profilePath: 'application_misc.country',
+        type: 'dropdown',
+      },  
       firstName: {
         selectors: [
           'legalNameSection_firstName',
-          'input-5',
-          'First Name',
-          'firstName',
-          'first-name',
-          'given-name'
         ],
-        profilePath: 'personal.firstName'
+        profilePath: 'personal.firstName',
+        type: 'text'
       },
       lastName: {
         selectors: [
           'legalNameSection_lastName',
-          'input-6',
-          'Last Name',
-          'lastName',
-          'last-name',
-          'family-name'
         ],
-        profilePath: 'personal.lastName'
+        profilePath: 'personal.lastName',
+        type: 'text'
       },
       email: {
         selectors: [
@@ -55,79 +38,69 @@ export const PLATFORM_PATTERNS = {
           'username',
           'input-3'
         ],
-        profilePath: 'personal.email'
-      },
-      phone: {
-        selectors: [
-          'phone-number',
-          'phoneNumber',
-          'mobile',
-          'phone'
-        ],
-        profilePath: 'personal.phone'
-      },
-      phone_extension: {
-        selectors: [
-          'phone-extension',
-          'extension',
-          'phoneExt'
-        ],
-        profilePath: 'application_misc.phone_extension'
+        profilePath: 'personal.email',
+        type: 'text'
       },
       address_line_1: {
         selectors: [
           'addressSection_addressLine1',
-          'address-line-1',
-          'street-address'
         ],
         profilePath: 'application_misc.address_line_1'
-      },
-      country: {
-        selectors: [
-          '[data-automation-id="countryDropdown"]',
-          'countryDropdown',  // Exact match for data-automation-id
-          'button[data-automation-id="countryDropdown"]'
-        ],
-        profilePath: 'application_misc.country',
-        type: 'dropdown',
-        defaultValue: 'United States of America'
       },
       city: {
         selectors: [
           'addressSection_city',
-          'city',
-          'municipality'
         ],
         profilePath: 'application_misc.city'
-      },
-      county: {
-        selectors: [
-          'addressSection_regionSubdivision1',
-          'county'
-        ],
-        profilePath: 'application_misc.county'
-      },
+      },    
       state: {
         selectors: [
-          '[data-automation-id="addressSection_countryRegion"]',
           'addressSection_countryRegion',  // Exact match for data-automation-id
-          'button[data-automation-id="addressSection_countryRegion"]'
         ],
         profilePath: 'application_misc.state',
-        type: 'dropdown'
-      },
+        type: 'dropdown',
+      }, 
       postal_code: {
         selectors: [
           'addressSection_postalCode',
-          'postal-code',
-          'zip'
         ],
-        profilePath: 'application_misc.postal_code'
-      }
+        profilePath: 'application_misc.post_code',
+        type: 'text'
+      }, 
+      county: {
+        selectors: [
+          'addressSection_regionSubdivision1',
+        ],
+        profilePath: 'application_misc.county',
+        type: 'text'
+      },
+      phone_type: {
+        selectors: [
+          'phone_type',  // Exact match for data-automation-id
+        ],
+        profilePath: 'application_misc.phone_type',
+        type: 'dropdown',
+      },  
+      phone: {
+        selectors: [
+          'phone-number',
+        ],
+        profilePath: 'personal.phone',
+        type: 'text'
+      },
+      phone_type: {
+        selectors: [
+          'phone-device-type',
+        ],
+        profilePath: 'application_misc.phone_type',
+        type: 'dropdown'
+      },
     }
   }
 };
 
+// Ensure that any string comparisons in JavaScript are case-insensitive and exact
+// This can be done in the logic where these patterns are used for matching
 export const PLATFORM_VALUE_MAPPINGS = {
   workAuth: {
     workday: {

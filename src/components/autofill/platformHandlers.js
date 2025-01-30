@@ -65,15 +65,15 @@ export const platformHandlers = {
       let result = false;
 
       try {
-        // For country field, filter out state options
+        // For country field
         if (fieldType === 'country') {
           const countryOptions = options.filter(opt => 
-            opt.textContent.includes('United States') ||
-            opt.textContent.includes('Canada')
+            opt.textContent.toLowerCase() === 'united states of america' ||
+            opt.textContent.toLowerCase() === 'canada'
           );
           
           const matchingOption = countryOptions.find(opt => 
-            opt.textContent.toLowerCase().includes('united states')
+            opt.textContent.toLowerCase() === 'united states of america'
           );
 
           if (matchingOption) {
@@ -81,17 +81,30 @@ export const platformHandlers = {
             result = true;
           }
         }
-
-        // For state field, filter out country options
-        if (fieldType === 'state') {
+        // For state field
+        else if (fieldType === 'state') {
           const stateOptions = options.filter(opt => 
-            !opt.textContent.includes('United States') &&
-            !opt.textContent.includes('select one')
+            !opt.textContent.toLowerCase().includes('select one')
           );
 
           const mappedValue = this.getValueMapping(fieldType, value);
           const matchingOption = stateOptions.find(opt => 
             opt.textContent.toLowerCase() === mappedValue.toLowerCase()
+          );
+
+          if (matchingOption) {
+            matchingOption.click();
+            result = true;
+          }
+        }
+        // For phone type
+        else if (fieldType === 'phone_type') {
+          const phoneTypeOptions = options.filter(opt => 
+            !opt.textContent.toLowerCase().includes('select one')
+          );
+          
+          const matchingOption = phoneTypeOptions.find(opt => 
+            opt.textContent.toLowerCase() === 'mobile'
           );
 
           if (matchingOption) {
@@ -125,7 +138,9 @@ export const platformHandlers = {
     getValueMapping(fieldType, value) {
       if (PLATFORM_VALUE_MAPPINGS[fieldType]?.workday) {
         const stateEntry = Object.entries(PLATFORM_VALUE_MAPPINGS[fieldType].workday)
-          .find(([_, patterns]) => patterns.includes(value));
+          .find(([_, patterns]) => patterns.some(pattern => 
+            pattern.toLowerCase() === value.toLowerCase()
+          ));
         if (stateEntry) {
           return stateEntry[0];
         }
