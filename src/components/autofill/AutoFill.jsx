@@ -8,7 +8,9 @@ import { storageService } from '../../services/storageService';
 import { aiService } from '../common/aiService';
 import { FIELD_PATTERNS, VALUE_MAPPINGS } from './fieldPatterns';
 import { PLATFORM_PATTERNS, PLATFORM_VALUE_MAPPINGS } from './platformPatterns';
-import { handleFileUpload, getPlatformSelectors } from './platformHandlers';
+import { handleFileUpload, getPlatformSelectors, platformHandlers } from './platformHandlers';
+import { detectFieldType } from './fieldDetection';
+import { getValueMapping } from './platformHandlers';
 
 // Import CSS as raw strings using Vite's ?raw suffix
 import picoCss from '@picocss/pico/css/pico.css?raw';
@@ -345,7 +347,8 @@ export const FloatingPage = ({ onClose }) => {
         platform,
         inputType: input.type,
         dataAutomationId: input.getAttribute('data-automation-id'),
-        tagName: input.tagName
+        tagName: input.tagName,
+        parentId: input.closest('[data-automation-id]')?.getAttribute('data-automation-id')
       });
       
       if (!platform || !PLATFORM_PATTERNS[platform]) {
@@ -373,14 +376,21 @@ export const FloatingPage = ({ onClose }) => {
       
       const fields = PLATFORM_PATTERNS[platform].fields;
       for (const [fieldType, config] of Object.entries(fields)) {
-        // Check all possible identifiers
+        // Check all possible identifiers including parent elements
         const matchFound = config.selectors.some(selector => {
           const selectorLower = selector.toLowerCase();
           return (
-            (dataAutomationId && dataAutomationId === selectorLower) ||
-            (name && name === selectorLower) ||
-            (id && id === selectorLower) ||
-            (ariaLabel && ariaLabel === selectorLower)
+            (dataAutomationId && dataAutomationId.includes(selectorLower)) ||
+            (name && name.includes(selectorLower)) ||
+            (id && id.includes(selectorLower)) ||
+            (ariaLabel && ariaLabel.includes(selectorLower)) ||
+            (parentDataAutomationId && parentDataAutomationId.includes(selectorLower)) ||
+            // Check if it's a file input within a matching container
+            (input.type === 'file' && input.closest(selector)) ||
+            // Check button selectors if defined
+            (config.buttonSelectors && config.buttonSelectors.some(btnSelector => 
+              input.matches(btnSelector) || input.closest(btnSelector)
+            ))
           );
         });
   
@@ -432,11 +442,13 @@ export const FloatingPage = ({ onClose }) => {
       const style = window.getComputedStyle(input);
       const originalBackground = style.backgroundColor;
       input.style.backgroundColor = success ? '#e6ffe6' : '#ffe6e6';
-      setTimeout(() => {
-        if (input.isConnected) {  // Check if element is still in DOM
-          input.style.backgroundColor = originalBackground;
-        }
-      }, 1000);
+      if (!success) {  // Only reset color for failed fields
+        setTimeout(() => {
+          if (input.isConnected) {  // Check if element is still in DOM
+            input.style.backgroundColor = originalBackground;
+          }
+        }, 1000);
+      }
     } catch (error) {
       console.error('[YaoguaiAI] Error highlighting field:', error);
     }
@@ -463,7 +475,76 @@ export const FloatingPage = ({ onClose }) => {
                     throw new Error('Field is not fillable');
                 }
 
-                await new Promise(resolve => setTimeout(resolve, 100)); // Delay to prevent rapid fills
+                // Handle custom dropdowns using platform-specific handler
+                if (input.tagName === 'BUTTON' && input.getAttribute('aria-haspopup') === 'listbox') {
+                    if (platform && platformHandlers[platform]?.handleDropdown) {
+                        await platformHandlers[platform].handleDropdown(input, value, fieldType);
+                        highlightField(input, true);
+                        return;
+                    }
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // Add special handling for custom dropdown buttons
+                if (input.tagName === 'BUTTON' && input.getAttribute('aria-haspopup') === 'listbox') {
+                    console.log('[YaoguaiAI] Handling custom dropdown:', { fieldType, value });
+                    
+                    // Click to open the dropdown
+                    input.click();
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // Increased wait time
+
+                    // Find the listbox with more specific selector
+                    const listbox = document.querySelector('[role="listbox"]');
+                    if (!listbox) {
+                        console.log('[YaoguaiAI] Waiting for listbox to appear...');
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        const retryListbox = document.querySelector('[role="listbox"]');
+                        if (!retryListbox) {
+                            throw new Error('Dropdown listbox not found after retry');
+                        }
+                    }
+
+                    // Get mapped value and find matching option
+                    const mappedValue = getValueMapping(fieldType, value, platform);
+                    console.log('[YaoguaiAI] Looking for option:', mappedValue);
+
+                    const options = Array.from(document.querySelectorAll('[role="option"]'));
+                    console.log('[YaoguaiAI] All available options:', options.map(opt => ({
+                        text: opt.textContent,
+                        value: opt.getAttribute('data-value'),
+                        selected: opt.getAttribute('aria-selected'),
+                        id: opt.id
+                    })));
+
+                    const matchingOption = options.find(opt => {
+                        const optionText = opt.textContent.toLowerCase().trim();
+                        const optionValue = opt.getAttribute('data-value');
+                        const searchValue = mappedValue.toLowerCase().trim();
+                        
+                        return optionText === searchValue || 
+                               optionText.includes(searchValue) || 
+                               searchValue.includes(optionText) ||
+                               (optionValue && optionValue.toLowerCase() === searchValue);
+                    });
+
+                    if (!matchingOption) {
+                        console.log('[YaoguaiAI] No match found. Available options:', 
+                            options.map(opt => opt.textContent)
+                        );
+                        throw new Error(`No matching option found for: ${mappedValue}`);
+                    }
+
+                    // Click the matching option
+                    matchingOption.click();
+                    highlightField(input, true);
+
+                    // If this is country and state depends on it, wait for state options to load
+                    if (fieldType === 'country') {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    return;
+                }
 
                 // Special handling for file inputs
                 if (input.type === 'file') {
@@ -585,10 +666,12 @@ export const FloatingPage = ({ onClose }) => {
       }
 
       // Additional validation with logging
+      // Update the validation in handleAutoFill
       inputs = inputs.filter(input => {
-        const isValid = input instanceof HTMLElement &&
-          input.tagName &&
-          ['INPUT', 'SELECT', 'TEXTAREA'].includes(input.tagName);
+        const isValid = input instanceof HTMLElement && (
+          ['INPUT', 'SELECT', 'TEXTAREA'].includes(input.tagName) ||
+          (input.tagName === 'BUTTON' && input.getAttribute('aria-haspopup') === 'listbox')
+        );
         if (!isValid) {
           console.log('[YaoguaiAI] Skipping invalid input:', input);
         }
@@ -608,11 +691,9 @@ export const FloatingPage = ({ onClose }) => {
           console.log("[YaoguaiAI] ========== Field Detection Start ==========")
           const match = detectFieldType(input);
           if (match) {
-            const { type, platform } = match;  // Make sure we get both type and platform
-            let value;
-
-            // Get field mapping for current platform
-            const fieldMapping = platform && PLATFORM_PATTERNS[platform]?.fields[type];
+            const { type } = match;
+            const fieldMapping = PLATFORM_PATTERNS[platform]?.fields[type];
+            let value = null; // Initialize value variable
 
             if (fieldMapping?.profilePath) {
               // Use direct profile path mapping
@@ -622,17 +703,29 @@ export const FloatingPage = ({ onClose }) => {
                 path: fieldMapping.profilePath,
                 value
               });
-            } else {
-              // Fallback for unmapped fields
-              for (const section of Object.keys(profile)) {
-                if (profile[section]?.[type]) {
-                  value = profile[section][type];
-                  console.log('[YaoguaiAI] Using fallback value:', {
-                    type,
-                    section,
-                    value
-                  });
-                  break;
+              if (value) {
+                const mappedValue = getValueMapping(type, value, platform);
+                await fillField(input, mappedValue, type, platform);
+                filledCount++;
+                highlightField(input, true);
+              } else {
+                // Fallback for unmapped fields
+                for (const section of Object.keys(profile)) {
+                  if (profile[section]?.[type]) {
+                    value = profile[section][type];
+                    console.log('[YaoguaiAI] Using fallback value:', {
+                      type,
+                      section,
+                      value
+                    });
+                    if (value) {
+                      const mappedValue = getValueMapping(type, value, platform);
+                      await fillField(input, mappedValue, type, platform);
+                      filledCount++;
+                      highlightField(input, true);
+                    }
+                    break;
+                  }
                 }
               }
             }

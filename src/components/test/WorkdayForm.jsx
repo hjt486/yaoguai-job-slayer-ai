@@ -45,23 +45,54 @@ const WorkdayForm = () => {
       <h2>workday</h2>
 
       {/* Upload Resume Section */}
-      <div data-automation-id="fileUploadPanel">
-        <div data-automation-id="file-upload-drop-zone" style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <button 
-            type="button" 
-            data-automation-id="select-files"
-            onClick={handleFileSelect}
-          >
-            Select file
-          </button>
-          {selectedFile && <span>{selectedFile}</span>}
-          <input 
-            ref={fileInputRef}
-            type="file" 
-            data-automation-id="file-upload-input-ref" 
-            style={{ display: 'none' }}
-            onChange={handleFileChange}
-          />
+      <div data-automation-id="quickApplyPage">
+        <div data-automation-id="richText" className="css-1e8xi5p">
+          Make completing your job application easier by uploading your resume or CV.
+        </div>
+        <div className="css-18mudl3">
+          <div data-automation-id="formField-" className="css-7t35fz">
+            <div className="css-15rz5ap">
+              <div style={{ width: '100%', maxWidth: '704px', minWidth: '280px' }}>
+                <div className="css-r2m5aj">
+                  Upload either DOC, DOCX, HTML, PDF, or TXT file types (5MB max)
+                </div>
+                <div data-automation-id="quickApplyUpload" className="css-1s544wy">
+                  <div className="css-wtpnzt">
+                    <div data-automation-id="file-upload-drop-zone" color="#0875e1" className="css-1ikudie">
+                      <div className="css-131uyni">
+                        <span className="css-hnro9k">
+                          {/* SVG icon can be included here if needed */}
+                        </span>
+                      </div>
+                      <div className="css-qquq3v">Drop file here</div>
+                      <div className="css-xszj4y">
+                        <div className="css-n80z3z">or</div>
+                        <button 
+                          type="button" 
+                          data-automation-id="select-files" 
+                          id="input-1" 
+                          className="css-1i4yvvz"
+                          onClick={handleFileSelect}
+                        >
+                          <span className="css-pplshs">Select file</span>
+                        </button>
+                      </div>
+                    </div>
+                    <input 
+                      ref={fileInputRef}
+                      type="file" 
+                      data-automation-id="file-upload-input-ref" 
+                      className="css-1hyfx7x"
+                      style={{ display: 'none' }}
+                      onChange={handleFileChange}
+                    />
+                    {/* Display the selected file name */}
+                    {selectedFile && <div className="css-file-name">Uploaded: {selectedFile}</div>}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

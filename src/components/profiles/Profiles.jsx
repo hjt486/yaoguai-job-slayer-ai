@@ -19,6 +19,8 @@ const Profiles = () => {
   const [pastedResume, setPastedResume] = useState('');
   const [showPasteDialog, setShowPasteDialog] = useState(false);
   const fileInputRef = useRef(null);
+  const [importError, setImportError] = useState('');
+  const importFileRef = useRef(null);
 
   const allowedFileTypes = [
     'application/pdf',
@@ -31,6 +33,101 @@ const Profiles = () => {
   // Add handleFileSelect function
   const handleFileSelect = () => {
     fileInputRef.current.click();
+  };
+
+  // Add import handler functions
+  const handleImportClick = () => {
+    importFileRef.current.click();
+  };
+
+  const handleImportProfile = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const importedProfile = JSON.parse(text);
+
+      // Validate imported profile structure
+      if (!importedProfile.id || !importedProfile.metadata) {
+        throw new Error('Invalid profile format');
+      }
+
+      const currentUser = await authService.getCurrentUser();
+      if (!currentUser?.id) {
+        throw new Error('No user logged in');
+      }
+
+      const storedProfiles = JSON.parse(await storageService.getAsync('userProfiles') || '{}');
+      if (!storedProfiles[currentUser.id]) {
+        storedProfiles[currentUser.id] = {};
+      }
+
+      // Generate new ID for imported profile
+      const existingIds = Object.keys(storedProfiles[currentUser.id]).map(Number);
+      const nextId = Math.max(0, ...existingIds) + 1;
+
+      // Create new profile with imported data
+      const newProfile = {
+        ...importedProfile,
+        id: nextId,
+        metadata: {
+          ...importedProfile.metadata,
+          profileName: `${importedProfile.metadata.profileName} (Imported)`,
+          createdAt: getCurrentISOString(),
+          lastModified: getCurrentISOString()
+        }
+      };
+
+      // Save to localStorage
+      storedProfiles[currentUser.id][nextId] = newProfile;
+      await storageService.setAsync('userProfiles', JSON.stringify(storedProfiles));
+
+      // Update UI
+      await loadProfiles();
+      await handleLoadProfile(newProfile);
+      setImportError('');
+    } catch (error) {
+      console.error('Import error:', error);
+      setImportError('Failed to import profile: ' + error.message);
+    } finally {
+      if (importFileRef.current) {
+        importFileRef.current.value = '';
+      }
+    }
+  };
+
+  const handleExportProfile = async (profile) => {
+    try {
+      // Get associated files
+      const [resumeData, pdfData] = await Promise.all([
+        storageService.getAsync(`resume_${profile.id}`),
+        storageService.getAsync(`generatedPDF_${profile.id}`)
+      ]);
+
+      // Create export data object
+      const exportData = {
+        ...profile,
+        associatedFiles: {
+          resume: resumeData ? JSON.parse(resumeData) : null,
+          pdf: pdfData || null
+        }
+      };
+
+      // Create and download file
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${profile.metadata?.profileName || 'profile'}_${profile.id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      setError('Failed to export profile: ' + error.message);
+    }
   };
 
   // Move loadProfiles before useEffect
@@ -472,22 +569,24 @@ const Profiles = () => {
 
   return (
     <article key="profiles-container">
-      <fieldset role="group">
-        <button type="button" onClick={handleFileSelect}>Load</button>
+      <div style={{ display: "flex" }}>
+        <button type="button" style={{ flex: "1" }} onClick={handleFileSelect}>
+          Load A Resume
+        </button>
         <input
           name="resume_text"
           type="text"
-          placeholder="or paste a resume here"
+          placeholder="or Paste A Resume"
           readOnly
           value={resumeName || ''}
           onClick={handleInputClick}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: 'pointer', flex: "1" }}
         />
         <input
           ref={fileInputRef}
           type="file"
           accept=".pdf,.doc,.docx,.tex,.txt"
-          style={{ display: 'none' }}
+          style={{ display: 'none', flex: "1" }}
           onChange={handleFileChange}
           data-testid="file-input"
         />
@@ -500,8 +599,18 @@ const Profiles = () => {
           Parse
         </LoadingButton>
         {error && <small style={{ color: 'red' }}>{error}</small>}
-      </fieldset>
-
+      </div>
+      <div style={{ display: "flex" }}>
+        <button style={{ flex: "1" }} onClick={handleImportClick}>Import A Profile</button>
+        <input
+          ref={importFileRef}
+          type="file"
+          accept=".json"
+          style={{ display: 'none' }}
+          onChange={handleImportProfile}
+        />
+        {importError && <small style={{ color: 'red' }}>{importError}</small>}
+      </div>
       {showPasteDialog && (
         <dialog open>
           <article key="paste-dialog">
@@ -573,6 +682,12 @@ const Profiles = () => {
               onClick={() => handleDeleteProfile(profile.id)}
             >
               Delete
+            </button>
+            <button
+              className='button-full'
+              onClick={() => handleExportProfile(profile)}
+            >
+              Export
             </button>
           </div>
         </article>

@@ -245,7 +245,7 @@ nav {
 }
 
 .button-full {
-  flex: 1;
+  /* flex: 1; */
   /* Make the button stretch to fill the container */
   display: flex;
   /* Use flexbox for content control */
