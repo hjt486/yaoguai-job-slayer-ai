@@ -9,7 +9,7 @@ import Match from './components/match/Match';
 import TabLayout from './components/layout/TabLayout';
 import TestForm from './components/test/TestForm'; // Add this import
 
-window.DEBUG = true; // Make DEBUG globally available
+window.DEBUG = false; // Make DEBUG globally available
 window.TEST_PAGE = '/test/workday.html'; // Fix path and add trailing semicolon
 window.TEST_ENTRY = 'workday'
 

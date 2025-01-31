@@ -4,52 +4,44 @@ import { PLATFORM_PATTERNS, PLATFORM_VALUE_MAPPINGS } from './platformPatterns';
 // Export as default to ensure it's properly bundled
 export const platformHandlers = {
   workday: {
-    getInputSelectors() {
-      // Get all selectors from platformPatterns.js
-      const fields = PLATFORM_PATTERNS.workday.fields;
-      const selectors = Object.values(fields).reduce((acc, field) => {
-        return acc.concat(field.selectors.map(selector => {
-          // Don't modify selectors that are already complete CSS selectors
-          if (selector.includes('[') || selector.includes('.') || 
-              selector.includes('#') || selector.includes('input') ||
-              selector.includes('button')) {
-            return selector;
-          }
-          // Generate both case variations for data-automation-id
-          return [
-            `[data-automation-id="${selector}"]`,
-            `[data-automation-id="${selector.toLowerCase()}"]`
-          ];
-        })).flat();
-      }, []);
+    // Add helper function for triggering input events
+    async triggerInputActivation(input) {
+      // Trigger all necessary events to ensure the field is recognized
+      input.dispatchEvent(new Event('focus', { bubbles: true }));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
+      input.dispatchEvent(new Event('blur', { bubbles: true }));
+      document.body.click(); // Force blur
+      await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
+    },
 
-      // Remove duplicates
-      const uniqueSelectors = [...new Set(selectors)];
-      console.log('[YaoguaiAI Debug] Workday selectors from platformPatterns:', uniqueSelectors);
-
-      return uniqueSelectors;
+    async handleTextInput(input, value) {
+      input.value = value;
+      await this.triggerInputActivation(input);
+      return true;
     },
 
     async handleDropdown(input, value, fieldType) {
       console.log('[YaoguaiAI] Handling Workday dropdown:', { fieldType, value });
-      
+
       // Ensure any existing dropdown is closed first
       const existingListbox = document.querySelector('[role="listbox"]');
       if (existingListbox) {
         document.body.click(); // Click outside to close existing dropdown
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
       }
 
       // Click to open the dropdown
       input.click();
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
 
       // Find the listbox with retry
       let listbox = document.querySelector('[role="listbox"]');
       let retries = 0;
       while (!listbox && retries < 3) {
         console.log('[YaoguaiAI] Waiting for listbox to appear...');
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
         listbox = document.querySelector('[role="listbox"]');
         retries++;
       }
@@ -67,12 +59,12 @@ export const platformHandlers = {
       try {
         // For country field
         if (fieldType === 'country') {
-          const countryOptions = options.filter(opt => 
+          const countryOptions = options.filter(opt =>
             opt.textContent.toLowerCase() === 'united states of america' ||
             opt.textContent.toLowerCase() === 'canada'
           );
-          
-          const matchingOption = countryOptions.find(opt => 
+
+          const matchingOption = countryOptions.find(opt =>
             opt.textContent.toLowerCase() === 'united states of america'
           );
 
@@ -83,27 +75,35 @@ export const platformHandlers = {
         }
         // For state field
         else if (fieldType === 'state') {
-          const stateOptions = options.filter(opt => 
+          const stateOptions = options.filter(opt =>
             !opt.textContent.toLowerCase().includes('select one')
           );
 
           const mappedValue = this.getValueMapping(fieldType, value);
-          const matchingOption = stateOptions.find(opt => 
+          const matchingOption = stateOptions.find(opt =>
             opt.textContent.toLowerCase() === mappedValue.toLowerCase()
           );
 
           if (matchingOption) {
             matchingOption.click();
             result = true;
+            // Trigger necessary events to ensure the field is properly activated
+            await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.dispatchEvent(new Event('blur', { bubbles: true }));
+
+            // Click outside to ensure the field is properly updated
+            document.body.click();
+            await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
           }
         }
         // For phone type
         else if (fieldType === 'phone_type') {
-          const phoneTypeOptions = options.filter(opt => 
+          const phoneTypeOptions = options.filter(opt =>
             !opt.textContent.toLowerCase().includes('select one')
           );
-          
-          const matchingOption = phoneTypeOptions.find(opt => 
+
+          const matchingOption = phoneTypeOptions.find(opt =>
             opt.textContent.toLowerCase() === 'mobile'
           );
 
@@ -114,11 +114,11 @@ export const platformHandlers = {
         }
 
         // Ensure dropdown is closed after selection
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
         const dropdownStillOpen = document.querySelector('[role="listbox"]');
         if (dropdownStillOpen) {
-          document.body.click(); // Click outside to force close
-          await new Promise(resolve => setTimeout(resolve, 500));
+          document.body.click();
+          await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
         }
 
         if (!result) {
@@ -130,7 +130,7 @@ export const platformHandlers = {
       } catch (error) {
         // Ensure dropdown is closed even if there's an error
         document.body.click();
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, EVENT_DELAY));
         throw error;
       }
     },
@@ -138,7 +138,7 @@ export const platformHandlers = {
     getValueMapping(fieldType, value) {
       if (PLATFORM_VALUE_MAPPINGS[fieldType]?.workday) {
         const stateEntry = Object.entries(PLATFORM_VALUE_MAPPINGS[fieldType].workday)
-          .find(([_, patterns]) => patterns.some(pattern => 
+          .find(([_, patterns]) => patterns.some(pattern =>
             pattern.toLowerCase() === value.toLowerCase()
           ));
         if (stateEntry) {
@@ -150,11 +150,11 @@ export const platformHandlers = {
 
     async handleFileUpload(input, profile) {
       console.log('[YaoguaiAI] Starting Workday resume upload...');
-      
+
       // Get resume data
       const resumeKey = `resumePDF_${profile.id}`;
       const resumeData = storageService.get(resumeKey);
-      
+
       let file;
       // Fallback to original resume if PDF not found
       if (!resumeData) {
@@ -163,7 +163,7 @@ export const platformHandlers = {
         if (!originalResume) {
           throw new Error('No resume file found');
         }
-        
+
         // Handle original resume
         file = await fetch(originalResume.content)
           .then(res => res.blob())
@@ -203,21 +203,21 @@ export const platformHandlers = {
       // First try to get the generated PDF
       const pdfResumeKey = `resumePDF_${profile.id}`;
       const pdfResume = storageService.get(pdfResumeKey);
-      
+
       // If no PDF, try to get the original uploaded resume
       if (!pdfResume) {
         const originalResumeKey = `resume_${profile.id}`;
         const originalResume = JSON.parse(storageService.get(originalResumeKey));
-        
+
         if (!originalResume) {
           throw new Error('No resume file found');
         }
-      
+
         // Use the original resume
         const file = await fetch(originalResume.content)
           .then(res => res.blob())
           .then(blob => new File([blob], originalResume.name, { type: 'application/pdf' }));
-      
+
         const dataTransfer = new DataTransfer();
         dataTransfer.items.add(file);
         input.files = dataTransfer.files;
@@ -226,12 +226,12 @@ export const platformHandlers = {
         const file = await fetch(pdfResume)
           .then(res => res.blob())
           .then(blob => new File([blob], 'resume.pdf', { type: 'application/pdf' }));
-      
+
         const dataTransfer = new DataTransfer();
         dataTransfer.items.add(file);
         input.files = dataTransfer.files;
       }
-      
+
       input.dispatchEvent(new Event('change', { bubbles: true }));
       return true;
     }
@@ -243,7 +243,7 @@ export const handleFileUpload = async (input, profile, platform) => {
   if (platform && platformHandlers[platform]?.handleFileUpload) {
     return await platformHandlers[platform].handleFileUpload(input, profile);
   }
-  
+
   // Default file upload handling
   const resumeKey = `resumePDF_${profile.id}`;
   const resumeData = storageService.get(resumeKey);
@@ -262,7 +262,7 @@ export const handleFileUpload = async (input, profile, platform) => {
 // Add new function to get platform-specific selectors
 export const getPlatformSelectors = (platform) => {
   console.log('[YaoguaiAI Debug] Getting selectors for platform:', platform);
-  
+
   const selectors = platform && platformHandlers[platform]?.getInputSelectors?.() || [
     'input:not([type="hidden"])',
     'select',

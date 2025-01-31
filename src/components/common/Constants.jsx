@@ -408,7 +408,7 @@ export const AI_PROMPTS = {
     2. Compare with profile:
        - Match similar terms (e.g., HTML5=HTML)
        - Include soft skills
-       - Find missing requirements
+       - Find missing requirements/skills and return.
   
     Return strict JSON only format:
     {
@@ -443,9 +443,11 @@ export const AI_PROMPTS = {
     4. General skills (e.g., debugging, feedback):
        - Brief mention in summary
        - Elaborate in cover letter
+       - If in missing keyword description has details mentioned in experience/school add to related profile section.
   
     5. Overall:
        - Keep original facts
+       - Keep original skills
        - Use professional tone
        - Focus on job relevance
 

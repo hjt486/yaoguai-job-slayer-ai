@@ -5,20 +5,14 @@ export const PLATFORM_PATTERNS = {
       'wd3',
       'myworkday',
       'myworkdayjobs',
-      '[data-automation-id="fileUploadPanel"]',
-      '[data-automation-id="file-upload-input-ref"]'
+      'wd3.myworkday.com',
+      'wd3.myworkdayjobs.com',
     ],
     fields: {
-      country: {
-        selectors: [
-          'countryDropdown',  // Exact match for data-automation-id
-        ],
-        profilePath: 'application_misc.country',
-        type: 'dropdown',
-      },  
       firstName: {
         selectors: [
           'legalNameSection_firstName',
+          '[data-automation-id="firstName"] input',
         ],
         profilePath: 'personal.firstName',
         type: 'text'
@@ -26,6 +20,7 @@ export const PLATFORM_PATTERNS = {
       lastName: {
         selectors: [
           'legalNameSection_lastName',
+          '[data-automation-id="lastName"] input',
         ],
         profilePath: 'personal.lastName',
         type: 'text'
@@ -33,68 +28,89 @@ export const PLATFORM_PATTERNS = {
       email: {
         selectors: [
           'email',
-          'input-12',
           'emailAddress',
-          'username',
-          'input-3'
+          '[data-automation-id="email"] input',
         ],
         profilePath: 'personal.email',
+        type: 'text'
+      },
+      phone: {
+        selectors: [
+          'phone-number',
+          '[data-automation-id="phoneNumber"] input',
+        ],
+        profilePath: 'personal.phone',
         type: 'text'
       },
       address_line_1: {
         selectors: [
           'addressSection_addressLine1',
+          '[data-automation-id="addressLine1"] input',
         ],
-        profilePath: 'application_misc.address_line_1'
+        profilePath: 'application_misc.address_line_1',
+        type: 'text'
       },
       city: {
         selectors: [
           'addressSection_city',
+          '[data-automation-id="city"] input',
         ],
-        profilePath: 'application_misc.city'
-      },    
+        profilePath: 'application_misc.city',
+        type: 'text'
+      },
       state: {
         selectors: [
-          'addressSection_countryRegion',  // Exact match for data-automation-id
+          'addressSection_countryRegion',
+          '[data-automation-id="state"] select',
         ],
         profilePath: 'application_misc.state',
-        type: 'dropdown',
-      }, 
+        type: 'dropdown'
+      },
       postal_code: {
         selectors: [
           'addressSection_postalCode',
+          '[data-automation-id="postalCode"] input',
         ],
         profilePath: 'application_misc.post_code',
         type: 'text'
-      }, 
-      county: {
+      },
+      linkedin: {
         selectors: [
-          'addressSection_regionSubdivision1',
+          '[data-automation-id="linkedinUrl"] input',
         ],
-        profilePath: 'application_misc.county',
+        profilePath: 'personal.linkedin',
         type: 'text'
       },
-      phone_type: {
+      work_experience: {
         selectors: [
-          'phone_type',  // Exact match for data-automation-id
+          '[data-automation-id="workExperience"] textarea',
         ],
-        profilePath: 'application_misc.phone_type',
-        type: 'dropdown',
-      },  
-      phone: {
-        selectors: [
-          'phone-number',
-        ],
-        profilePath: 'personal.phone',
+        profilePath: 'experience.summary',
         type: 'text'
       },
-      phone_type: {
+      education: {
         selectors: [
-          'phone-device-type',
+          '[data-automation-id="educationHistory"] textarea',
         ],
-        profilePath: 'application_misc.phone_type',
-        type: 'dropdown'
+        profilePath: 'education.summary',
+        type: 'text'
       },
+      resume: {
+        selectors: [
+          '[data-automation-id="file-upload-input-ref"]',
+          '[data-automation-id="fileUploadPanel"]',
+          '[data-automation-id="file-upload-drop-zone"]',
+          '[data-automation-id="resumeUpload"] input[type="file"]',
+        ],
+        profilePath: 'resume.resumeFile',
+        type: 'file'
+      },
+      submit: {
+        selectors: [
+          '[data-automation-id="submit"] button',
+        ],
+        type: 'button'
+      }
     }
   }
 };
